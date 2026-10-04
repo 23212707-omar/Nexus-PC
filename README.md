@@ -12,7 +12,7 @@ Tienda ficticia desarrollada con fines académicos para la materia **Gestión de
 |---|---|
 | Daniel | Líder del proyecto y base de datos |
 | Angel | Backend (API) |
-| Omar | Frontend y diseño |
+| Omar González Cristóbal| Frontend y diseño |
 | Andrés | Documentación y responsable de pruebas y calidad |
 
 Profesora: Mtra. María Guadalupe Rodríguez López
