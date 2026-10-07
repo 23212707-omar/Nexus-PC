@@ -1,5 +1,4 @@
 // Nexus PC - Diagrama entidad-relacion
-// Pegar en https://dbdiagram.io (New diagram) y exportar a PNG.
 
 Project NexusPC {
   database_type: 'SQL Server'
