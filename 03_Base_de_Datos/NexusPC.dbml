@@ -1,0 +1,55 @@
+// Nexus PC - Diagrama entidad-relacion
+// Pegar en https://dbdiagram.io (New diagram) y exportar a PNG.
+
+Project NexusPC {
+  database_type: 'SQL Server'
+}
+
+Table Categorias {
+  IdCategoria int [pk, increment]
+  Nombre nvarchar(50) [not null, unique]
+}
+
+Table Productos {
+  IdProducto int [pk, increment]
+  IdCategoria int [not null, ref: > Categorias.IdCategoria]
+  Nombre nvarchar(120) [not null]
+  Marca nvarchar(50) [not null]
+  Descripcion nvarchar(500)
+  Precio decimal(10,2) [not null, note: 'CHECK Precio >= 0']
+  Stock int [not null, note: 'CHECK Stock >= 0']
+  ImagenUrl nvarchar(255)
+}
+
+Table Pedidos {
+  IdPedido int [pk, increment]
+  NombreComprador nvarchar(100) [not null]
+  Correo nvarchar(120)
+  Telefono nvarchar(20)
+  Fecha datetime2 [not null, default: `SYSDATETIME()`]
+  Total decimal(12,2) [not null, note: 'CHECK Total >= 0']
+
+  Note: 'CHECK: Correo o Telefono debe tener valor'
+}
+
+Table DetallePedido {
+  IdDetalle int [pk, increment]
+  IdPedido int [not null, ref: > Pedidos.IdPedido]
+  IdProducto int [not null, ref: > Productos.IdProducto]
+  Cantidad int [not null, note: 'CHECK Cantidad > 0']
+  PrecioUnitario decimal(10,2) [not null, note: 'Precio al momento de la compra']
+
+  indexes {
+    (IdPedido, IdProducto) [unique]
+  }
+}
+
+Table EspecificacionesProducto {
+  IdProducto int [not null, ref: > Productos.IdProducto]
+  Clave nvarchar(40) [not null, note: 'Ej. Socket, TipoRAM, TDP_W, FormatoPlaca']
+  Valor nvarchar(100) [not null]
+
+  indexes {
+    (IdProducto, Clave) [pk]
+  }
+}
