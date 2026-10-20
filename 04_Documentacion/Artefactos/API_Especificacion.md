@@ -827,6 +827,30 @@ Qué regla se aplica depende de la pareja **categoría del producto base × cate
 11. Responde **201** con el pedido completo. La interfaz vacía el carrito y muestra la pantalla de éxito.
 12. Si ocurre cualquier falla inesperada en los pasos 4 a 10, cancela la transacción (rollback), registra el detalle técnico solo en el servidor y responde **500 `ERROR_INTERNO`** con un mensaje genérico. La interfaz no vacía el carrito.
 
+*Diagrama del flujo*
+
+```mermaid
+flowchart TD
+    A(["Inicio: la persona pulsa Confirmar pedido"]) --> B["Recibir nombre_comprador, correo, telefono e items sin precios"]
+    B --> C{"¿Datos válidos?"}
+    C -- No --> E400["Responder 400 DATOS_INVALIDOS sin abrir transacción"]
+    C -- Sí --> D["Agrupar líneas repetidas y ordenar por id_producto"]
+    D --> F["Abrir transacción"]
+    F --> G["Por cada línea: restar stock solo si Stock >= cantidad y leer nombre y precio"]
+    G --> H{"¿La línea se descontó?"}
+    H -- No --> I{"¿El producto existe?"}
+    I -- No --> R404["Rollback y responder 404 PRODUCTO_NO_ENCONTRADO"]
+    I -- Sí --> R409["Rollback y responder 409 STOCK_INSUFICIENTE"]
+    H -- Sí --> J{"¿Quedan líneas?"}
+    J -- Sí --> G
+    J -- No --> K["Calcular total con los precios de la base"]
+    K --> L["Insertar en Pedidos y obtener IdPedido y Fecha"]
+    L --> M["Insertar líneas en DetallePedido"]
+    M --> N["Commit y armar numero_pedido NX-0001"]
+    N --> O(["Responder 201 con el pedido completo"])
+    X(["Falla inesperada en cualquier paso de la transacción"]) -.-> R500["Rollback y responder 500 ERROR_INTERNO"]
+```
+
 Los tres mensajes de error son distintos entre sí: datos inválidos (qué campo corregir), stock insuficiente (qué producto y cuántas piezas quedan) y falla interna (mensaje genérico).
 
 ---
