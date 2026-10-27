@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Nexus PC – Catálogo</title>
+  <link rel="stylesheet" href="css/estilos.css">
+</head>
+<body>
+  <!-- Encabezado: logo, botón del carrito y botón ☰ (solo se ve en celular) -->
+  <header class="encabezado">
+    <div class="barra">
+      <span class="logo">Nexus PC</span>
+      <button id="btn-carrito" class="boton-carrito" type="button">
+        Carrito <span id="contador-carrito" class="contador" aria-live="polite" aria-label="0 artículos">0</span>
+      </button>
+      <button id="btn-menu" class="boton-menu" type="button"
+              aria-expanded="false" aria-controls="menu-categorias"
+              aria-label="Abrir menú de categorías">☰</button>
+    </div>
+    <!-- Menú de categorías: lo llena app.js con los datos -->
+    <nav id="menu-categorias" class="menu" aria-label="Categorías"></nav>
+  </header>
+
+  <main class="catalogo">
+    <h1 id="titulo-categoria">Catálogo</h1>
+    <p id="subtitulo-categoria" class="subtitulo"></p>
+    <!-- Mensajes de "Cargando..." y de error -->
+    <div id="mensaje" class="mensaje" role="status" aria-live="polite" hidden></div>
+    <!-- Tarjetas de productos -->
+    <div id="lista-productos" class="cuadricula"></div>
+  </main>
+
+  <script src="js/api.js"></script>
+  <script src="js/app.js"></script>
+</body>
+</html>
