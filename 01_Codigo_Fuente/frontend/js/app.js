@@ -1,6 +1,6 @@
 /* app.js – Lo que se ve en pantalla: menú, tarjetas, contador y mensajes. */
 
-let contadorCarrito = 0;      // Artículos agregados (solo en memoria; el carrito completo es de la Etapa III)
+// El carrito vive ahora en js/carrito.js (objeto Carrito)
 let categoriaActiva = null;   // La categoría que se está mostrando
 
 // Atajos a los elementos del HTML
@@ -112,6 +112,12 @@ function crearTarjeta(producto) {
   fila.className = 'fila';
   fila.append(precio, etiqueta);
 
+  // Mensaje breve que aparece junto al botón si ya no hay más piezas
+  const aviso = document.createElement('p');
+  aviso.className = 'aviso-stock';
+  aviso.setAttribute('role', 'status');
+  aviso.hidden = true;
+
   // Botón: si está agotado queda deshabilitado
   const boton = document.createElement('button');
   boton.type = 'button';
@@ -122,18 +128,124 @@ function crearTarjeta(producto) {
   } else {
     boton.textContent = 'Agregar al carrito';
     boton.setAttribute('aria-label', 'Agregar al carrito: ' + producto.nombre);
-    boton.addEventListener('click', agregarAlCarrito);
+    boton.addEventListener('click', () => agregarAlCarrito(producto, aviso));
   }
 
-  tarjeta.append(caja, marca, nombre, fila, boton);
+  tarjeta.append(caja, marca, nombre, fila, boton, aviso);
   return tarjeta;
 }
 
-/* ---------- Carrito: por ahora solo cuenta (sin recargar la página) ---------- */
-function agregarAlCarrito() {
-  contadorCarrito += 1;
-  contador.textContent = contadorCarrito;
-  contador.setAttribute('aria-label', contadorCarrito + (contadorCarrito === 1 ? ' artículo' : ' artículos'));
+/* ---------- Agregar al carrito ---------- */
+function agregarAlCarrito(producto, aviso) {
+  const resultado = Carrito.agregar(producto);
+  if (resultado.ok) {
+    actualizarVistaCarrito();
+  } else {
+    // No se agrega: se avisa cuántas piezas hay y el mensaje se quita solo a los 3 segundos
+    aviso.textContent = resultado.stock === 1 ? 'Solo hay 1 pieza disponible'
+                                              : 'Solo hay ' + resultado.stock + ' piezas disponibles';
+    aviso.hidden = false;
+    clearTimeout(aviso.temporizador);
+    aviso.temporizador = setTimeout(() => { aviso.hidden = true; }, 3000);
+  }
+}
+
+/* ---------- Vista rápida del carrito (panel bajo el botón "Carrito") ---------- */
+const caja = document.getElementById('carrito-caja');
+const botonCarrito = document.getElementById('btn-carrito');
+const panel = document.getElementById('panel-carrito');
+const panelTitulo = document.getElementById('panel-titulo');
+const panelLista = document.getElementById('panel-lista');
+const panelVacio = document.getElementById('panel-vacio');
+const panelTotal = document.getElementById('panel-total');
+const panelTotalValor = document.getElementById('panel-total-valor');
+const panelVer = document.getElementById('panel-ver');
+const panelExplorar = document.getElementById('panel-explorar');
+
+// true si la pantalla es táctil (celular o tableta); con ratón vale false
+const consultaTactil = window.matchMedia('(hover: none) and (pointer: coarse)');
+let fijado = false;        // true si la persona abrió el panel con clic o Enter (no se cierra al salir el cursor)
+let temporizadorCierre = null;
+
+function abrirPanel() {
+  clearTimeout(temporizadorCierre);
+  panel.hidden = false;
+  botonCarrito.setAttribute('aria-expanded', 'true');
+}
+function cerrarPanel() {
+  clearTimeout(temporizadorCierre);
+  panel.hidden = true;
+  fijado = false;
+  botonCarrito.setAttribute('aria-expanded', 'false');
+}
+
+// Con ratón: al pasar el cursor se abre; al salir se cierra tras 200 ms (evita parpadeos)
+caja.addEventListener('mouseenter', () => { if (!consultaTactil.matches) abrirPanel(); });
+caja.addEventListener('mouseleave', () => {
+  if (consultaTactil.matches || fijado) return;
+  temporizadorCierre = setTimeout(cerrarPanel, 200);
+});
+
+// Clic o Enter en el botón. En pantalla táctil: un toque abre y otro cierra.
+// Con ratón: el primer clic deja el panel fijo; el siguiente lo cierra.
+botonCarrito.addEventListener('click', () => {
+  if (consultaTactil.matches) {
+    if (panel.hidden) abrirPanel(); else cerrarPanel();
+  } else if (panel.hidden || !fijado) {
+    abrirPanel();
+    fijado = true;
+  } else {
+    cerrarPanel();
+  }
+});
+
+// Un toque o clic fuera del panel lo cierra; Escape también
+document.addEventListener('click', evento => { if (!caja.contains(evento.target)) cerrarPanel(); });
+document.addEventListener('keydown', evento => {
+  if (evento.key === 'Escape' && !panel.hidden) { cerrarPanel(); botonCarrito.focus(); }
+});
+panelExplorar.addEventListener('click', cerrarPanel);
+
+// Redibuja el contador y el panel con lo que haya en el carrito
+function actualizarVistaCarrito() {
+  const productos = Carrito.obtener();
+  const n = Carrito.totalArticulos();
+  const textoArticulos = n + (n === 1 ? ' artículo' : ' artículos');
+
+  contador.textContent = n;
+  contador.setAttribute('aria-label', textoArticulos);
+  panelTitulo.textContent = 'Tu carrito (' + textoArticulos + ')';
+
+  // Una fila por producto: nombre (con "..." si es largo), cantidad y precio de la línea
+  panelLista.textContent = '';
+  productos.forEach(p => {
+    const fila = document.createElement('li');
+    fila.className = 'panel-fila';
+    const datos = document.createElement('div');
+    datos.className = 'panel-datos';
+    const nombre = document.createElement('div');
+    nombre.className = 'panel-nombre';
+    nombre.textContent = p.nombre;
+    nombre.title = p.nombre;
+    const cantidad = document.createElement('div');
+    cantidad.className = 'panel-cantidad';
+    cantidad.textContent = 'Cantidad: ' + p.cantidad;
+    datos.append(nombre, cantidad);
+    const precio = document.createElement('span');
+    precio.className = 'panel-precio';
+    precio.textContent = formatoPesos.format(p.precio * p.cantidad);
+    fila.append(datos, precio);
+    panelLista.appendChild(fila);
+  });
+  panelTotalValor.textContent = formatoPesos.format(Carrito.totalPrecio());
+
+  // Carrito vacío: mensaje y botón "Explorar catálogo"; con productos: lista, total y "Ver carrito"
+  const vacio = n === 0;
+  panelLista.hidden = vacio;
+  panelTotal.hidden = vacio;
+  panelVer.hidden = vacio;
+  panelVacio.hidden = !vacio;
+  panelExplorar.hidden = !vacio;
 }
 
 /* ---------- Cargar y mostrar una categoría ---------- */
@@ -168,4 +280,5 @@ async function iniciar() {
   }
 }
 
+actualizarVistaCarrito();   // muestra el carrito guardado (si lo había)
 iniciar();
