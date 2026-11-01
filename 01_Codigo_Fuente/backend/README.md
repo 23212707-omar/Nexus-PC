@@ -48,12 +48,12 @@ Además, Express sirve la carpeta `../frontend` (con su subcarpeta `img`) en la 
 ## 2. Requisitos
 
 - **Node.js 18.19 o superior** (recomendado la versión LTS desde <https://nodejs.org>). Comprueba con `node -v`.
-- **SQL Server 2022** y **SSMS** en Windows.
+- **SQL Server 2022** (Express o Developer completo; **LocalDB no sirve**, Node no puede conectarse a él) y **SSMS** en Windows.
 - Git.
 
 ## 3. Instalación rápida
 
-Abre una terminal (la de VS Code sirve) y ejecuta:
+**Primero prepara SQL Server (sección 4) y deja listo el usuario `nexus_app`.** Después abre una terminal (la de VS Code sirve) y ejecuta:
 
 ```bash
 cd 01_Codigo_Fuente/backend
@@ -61,9 +61,7 @@ npm install
 copy .env.example .env
 ```
 
-Edita `.env` con tus datos (ver sección 5). Antes de eso, prepara SQL Server (sección 4).
-
-Luego:
+Edita `.env` con tus datos (ver sección 5). Luego:
 
 ```bash
 npm run probar-conexion   # debe mostrar: Productos en la base de datos: 30
@@ -77,7 +75,7 @@ npm start                 # arranca la API
 ### Paso 1. Crear la base de datos con `NexusPC.sql`
 
 1. Abre **SSMS** y conéctate a tu servidor (con Autenticación de Windows, como siempre).
-2. Menú **Archivo → Abrir → Archivo…** y elige `NexusPC.sql`.
+2. Menú **Archivo → Abrir → Archivo…** y elige `03_Base_de_Datos/NexusPC.sql`.
 3. Pulsa **Ejecutar** (F5) para correr el script **completo**.
 4. Revisa los resultados: la consulta de conteo debe terminar con una fila `TOTAL = 30`.
 
@@ -90,7 +88,7 @@ SELECT @@SERVERNAME AS Servidor, @@SERVICENAME AS Instancia;
 ```
 
 - Instancia `MSSQLSERVER` → es la **predeterminada**; se usa solo `localhost`.
-- Cualquier otro nombre (por ejemplo `SQLEXPRESS`) → es una **instancia con nombre**; el servidor es `localhost\SQLEXPRESS`. Si instalaste la edición Express, casi seguro es este caso.
+- Cualquier otro nombre (por ejemplo `SQLEXPRESS`) → es una **instancia con nombre**; el servidor es `localhost\SQLEXPRESS`. Si instalaste la edición Express, casi seguro es este caso. Esta guía se probó con SQL Server 2022 Express, instancia `SQLEXPRESS`, puerto fijo 1433 y Node.js 24.
 
 ### Paso 2. Habilitar TCP/IP
 
@@ -115,33 +113,19 @@ Por defecto SQL Server solo acepta la cuenta de Windows. Hay que permitir tambi�
 3. Elige **Modo de autenticación de SQL Server y Windows** → **Aceptar**.
 4. Saldrá un aviso de que hay que reiniciar el servicio (Paso 5).
 
-### Paso 4. Crear el inicio de sesión y el usuario (solo lectura)
+### Paso 4. Crear el inicio de sesión y el usuario de la API
 
-La API **no debe usar la cuenta `sa`**. Se crea una cuenta propia que solo puede leer la base `NexusPC`. En SSMS, en una pestaña de consulta nueva, ejecuta:
+La API **no debe usar la cuenta `sa`**. El repositorio incluye un script que crea una cuenta propia, `nexus_app`, con permisos mínimos: puede leer y escribir en la base `NexusPC`, pero no es administrador y no puede borrar tablas.
 
-```sql
--- 1) Inicio de sesión (a nivel de servidor)
-USE master;
-GO
-CREATE LOGIN nexus_api
-    WITH PASSWORD = 'CAMBIA_ESTA_CLAVE_2026!',   -- ¡escribe tu propia contraseña!
-         CHECK_POLICY = ON,
-         CHECK_EXPIRATION = OFF;
-GO
-
--- 2) Usuario dentro de la base NexusPC, con permiso SOLO de lectura
-USE NexusPC;
-GO
-CREATE USER nexus_api FOR LOGIN nexus_api;
-ALTER ROLE db_datareader ADD MEMBER nexus_api;   -- puede hacer SELECT, nada más
-GO
-```
+1. En SSMS abre `03_Base_de_Datos/Crear_Usuario_API.sql` (antes debes haber ejecutado `NexusPC.sql`).
+2. En la línea `DECLARE @pwd` cambia `CAMBIAR_ESTA_CONTRASENA` por una contraseña propia. **Escríbela solo en tu copia local y nunca subas al repositorio el archivo con la contraseña real.**
+3. Ejecútalo con **Ejecutar** (F5). Al final deben aparecer dos filas: `db_datareader` y `db_datawriter`.
 
 Notas:
 
-- Usa una contraseña propia, de al menos 8 caracteres con mayúsculas, minúsculas y números o símbolos. **No uses `#`, comillas ni espacios** (el archivo `.env` los interpreta de forma especial).
-- `NexusPC.sql` no borra la base de datos, solo sus tablas, así que el usuario se conserva cuando vuelves a ejecutarlo. Si algún día haces `DROP DATABASE NexusPC`, repite el bloque 2.
-- Hoy la API solo lee (`db_datareader`). Cuando se implementen los pedidos habrá que agregar también `ALTER ROLE db_datawriter ADD MEMBER nexus_api;`.
+- Usa una contraseña de al menos 8 caracteres con mayúsculas, minúsculas y números o símbolos. **No uses `#`, comillas ni espacios** (el archivo `.env` los interpreta de forma especial).
+- `NexusPC.sql` no borra la base de datos, solo sus tablas, así que el usuario se conserva cuando vuelves a ejecutarlo. Si algún día haces `DROP DATABASE NexusPC`, vuelve a ejecutar `Crear_Usuario_API.sql`.
+- Hoy la API solo lee, pero el usuario ya tiene `db_datawriter` porque el registro de pedidos (Etapa III) necesita escribir en `Pedidos`, `DetallePedido` y `Productos`.
 
 ### Paso 5. Reiniciar el servicio de SQL Server
 
@@ -172,7 +156,7 @@ Los datos de conexión **solo** van en `.env`. Este archivo está en `.gitignore
 
 | Variable | Obligatoria | Para qué sirve |
 |---|---|---|
-| `DB_USER` | Sí | Inicio de sesión de SQL Server (`nexus_api`) |
+| `DB_USER` | Sí | Inicio de sesión de SQL Server (`nexus_app`) |
 | `DB_PASSWORD` | Sí | Su contraseña |
 | `DB_SERVER` | Sí | `localhost` (o `localhost\SQLEXPRESS`) |
 | `DB_NAME` | Sí | `NexusPC` |
@@ -183,7 +167,7 @@ Los datos de conexión **solo** van en `.env`. Este archivo está en `.gitignore
 **Caso A: instancia predeterminada (la más simple)**
 
 ```env
-DB_USER=nexus_api
+DB_USER=nexus_app
 DB_PASSWORD=tu_contraseña
 DB_SERVER=localhost
 DB_NAME=NexusPC
@@ -193,10 +177,10 @@ PORT=3000
 **Caso B: instancia con nombre, por puerto fijo (recomendado)**
 
 ```env
-DB_USER=nexus_api
+DB_USER=nexus_app
 DB_PASSWORD=tu_contraseña
 DB_SERVER=localhost
-DB_PORT=1450
+DB_PORT=1433
 DB_NAME=NexusPC
 PORT=3000
 ```
@@ -204,7 +188,7 @@ PORT=3000
 **Caso C: instancia con nombre, por nombre (necesita SQL Server Browser)**
 
 ```env
-DB_USER=nexus_api
+DB_USER=nexus_app
 DB_PASSWORD=tu_contraseña
 DB_SERVER=localhost\SQLEXPRESS
 DB_NAME=NexusPC
@@ -212,6 +196,8 @@ PORT=3000
 ```
 
 (También es válido `DB_SERVER=localhost` más `DB_INSTANCE=SQLEXPRESS`.)
+
+Si el puerto 1433 ya lo usa otra instancia, fija otro en el Paso 2 (por ejemplo `1450`) y escribe ese mismo número en `DB_PORT`.
 
 ### ¿Por qué `trustServerCertificate`?
 
@@ -264,9 +250,9 @@ Todos los errores tienen la misma forma:
 | `Faltan variables en el archivo .env: ...` | No existe `.env` o le faltan líneas | `copy .env.example .env` y llénalo. El archivo debe llamarse exactamente `.env` y estar dentro de `backend/` |
 | `Failed to connect to localhost:1433 - Could not connect` (`ESOCKET`) | TCP/IP deshabilitado, servicio sin reiniciar, servicio detenido o puerto equivocado | Repite los pasos 2 y 5; revisa con `Test-NetConnection localhost -Port 1433`; verifica `DB_PORT` |
 | `Failed to connect ... in 15000ms` (`ETIMEOUT`) | Host o puerto incorrectos, o instancia con puerto dinámico | Fija el puerto (paso 2) y usa `DB_PORT` |
-| `Login failed for user 'nexus_api'` (`ELOGIN`) | Contraseña incorrecta, el login no existe o la autenticación mixta no está activa (o falta reiniciar) | Revisa `DB_USER`/`DB_PASSWORD`; repite los pasos 3, 4 y 5. Si la contraseña tiene `#`, quítalo o ponla entre comillas dobles en `.env` |
-| `Cannot open database "NexusPC" requested by the login` | La base no existe, `DB_NAME` está mal escrito o el usuario no se creó en esa base | Ejecuta `NexusPC.sql` completo; revisa `DB_NAME`; repite el bloque 2 del paso 4 |
-| `The SELECT permission was denied on the object 'Productos'` | Al usuario le falta el rol de lectura | `USE NexusPC; ALTER ROLE db_datareader ADD MEMBER nexus_api;` |
+| `Login failed for user 'nexus_app'` (`ELOGIN`) | Contraseña incorrecta, el login no existe o la autenticación mixta no está activa (o falta reiniciar) | Revisa `DB_USER`/`DB_PASSWORD`; repite los pasos 3, 4 y 5. Si la contraseña tiene `#`, quítalo o ponla entre comillas dobles en `.env` |
+| `Cannot open database "NexusPC" requested by the login` | La base no existe, `DB_NAME` está mal escrito o el usuario no se creó en esa base | Ejecuta `NexusPC.sql` completo; revisa `DB_NAME`; vuelve a ejecutar `Crear_Usuario_API.sql` (paso 4) |
+| `The SELECT permission was denied on the object 'Productos'` | Al usuario le falta el rol de lectura | `USE NexusPC; ALTER ROLE db_datareader ADD MEMBER nexus_app;` |
 | `Invalid object name 'dbo.Productos'` | Estás conectado a otra base o no se ejecutó el script | Revisa `DB_NAME` y ejecuta `NexusPC.sql` |
 | `Failed to lookup instance on localhost - Instance name not found` (`EINSTLOOKUP`) | El servicio SQL Server Browser no está iniciado, o el nombre de la instancia está mal | Paso 6, o mejor fija el puerto y usa `DB_PORT` |
 | `self-signed certificate` | Se quitó `trustServerCertificate` | Dejar `trustServerCertificate: true` en `db/conexion.js` |
@@ -276,7 +262,7 @@ Todos los errores tienen la misma forma:
 | PowerShell: `la ejecución de scripts está deshabilitada` | Política de PowerShell | Usa el CMD, o ejecuta una vez `Set-ExecutionPolicy -Scope CurrentUser RemoteSigned` |
 | Los acentos se ven como símbolos raros en la terminal | Codificación de la consola | Usa la terminal de VS Code / Windows Terminal, o ejecuta `chcp 65001` |
 | La API responde `500 ERROR_INTERNO` | Falla en el servidor | Mira la terminal donde corre `npm start`: ahí está el detalle técnico (la respuesta no lo muestra a propósito) |
-| `Cannot GET /` en el navegador | Todavía no existe `../frontend/index.html` | Es normal: la API funciona en `/api/...` |
+| `Cannot GET /` en el navegador | No se encuentra `../frontend/index.html` | Revisa que la carpeta `frontend` esté junto a `backend` dentro de `01_Codigo_Fuente`. La API sigue funcionando en `/api/...` |
 
 Tras corregir un problema de conexión **no hace falta reiniciar `npm start`**: el servidor vuelve a intentar conectarse en la siguiente petición. Si cambias el archivo `.env`, sí hay que reiniciarlo (`Ctrl + C` y `npm start`).
 
@@ -286,4 +272,4 @@ Tras corregir un problema de conexión **no hace falta reiniciar `npm start`**: 
 - Hay **una sola conexión reutilizable** (pool) para todo el servidor.
 - Los datos de conexión viven solo en `.env` y `.env` está en `.gitignore`. Antes de cada commit revisa con `git status` que `.env` **no** aparezca.
 - El error 500 devuelve un mensaje genérico y nunca revela nombres de tablas, consultas ni texto de errores de SQL Server.
-- El usuario de la base solo tiene permiso de lectura.
+- El usuario de la base (`nexus_app`) no es administrador: solo tiene los roles `db_datareader` y `db_datawriter` sobre `NexusPC` y no puede borrar tablas.
