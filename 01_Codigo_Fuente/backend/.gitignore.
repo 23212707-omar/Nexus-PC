@@ -1,0 +1,12 @@
+# Dependencias (se reinstalan con "npm install")
+node_modules/
+
+# Credenciales: NUNCA subir (RNF-03). Solo se sube .env.example
+.env
+.env.*
+!.env.example
+
+# Registros y archivos del sistema
+*.log
+.DS_Store
+Thumbs.db
