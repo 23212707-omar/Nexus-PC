@@ -1,0 +1,19 @@
+{
+  "name": "nexus-pc-backend",
+  "version": "0.1.0",
+  "description": "API de Nexus PC (Node.js, Express y SQL Server). Primera versión: categorías y productos.",
+  "main": "servidor.js",
+  "private": true,
+  "scripts": {
+    "start": "node servidor.js",
+    "probar-conexion": "node db/probarConexion.js"
+  },
+  "engines": {
+    "node": ">=18.19.0"
+  },
+  "dependencies": {
+    "dotenv": "^18.0.9",
+    "express": "^5.3.0",
+    "mssql": "^12.7.13"
+  }
+}
