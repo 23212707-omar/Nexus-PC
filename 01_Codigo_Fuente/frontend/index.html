@@ -34,7 +34,8 @@
     <nav id="menu-categorias" class="menu" aria-label="Categorías"></nav>
   </header>
 
-  <main class="catalogo">
+  <!-- Pantalla 1: catálogo (dirección #/ o sin nada) -->
+  <main id="vista-catalogo" class="catalogo">
     <h1 id="titulo-categoria">Catálogo</h1>
     <p id="subtitulo-categoria" class="subtitulo"></p>
     <!-- Mensajes de "Cargando..." y de error -->
@@ -43,8 +44,16 @@
     <div id="lista-productos" class="cuadricula"></div>
   </main>
 
+  <!-- Pantalla 2: detalle de producto (dirección #/producto/ID). Lo llena detalle.js -->
+  <main id="vista-detalle" class="detalle" hidden>
+    <nav id="ruta-detalle" class="ruta" aria-label="Ruta de navegación"></nav>
+    <div id="detalle-mensaje" class="mensaje" role="status" aria-live="polite" hidden></div>
+    <article id="detalle-contenido" class="detalle-producto" hidden></article>
+  </main>
+
   <script src="js/api.js"></script>
   <script src="js/carrito.js"></script>
+  <script src="js/detalle.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

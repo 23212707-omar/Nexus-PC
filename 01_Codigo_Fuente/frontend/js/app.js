@@ -1,9 +1,14 @@
-/* app.js – Lo que se ve en pantalla: menú, tarjetas, contador y mensajes. */
+/* app.js – Lo que se ve en pantalla: menú, tarjetas, contador, mensajes y cambio entre pantallas. */
 
-// El carrito vive ahora en js/carrito.js (objeto Carrito)
+// El carrito vive en js/carrito.js (objeto Carrito) y el detalle de producto en js/detalle.js
 let categoriaActiva = null;   // La categoría que se está mostrando
+let categorias = [];          // Todas las categorías (se llenan al cargar el menú)
+let promesaCategorias = null; // La petición de categorías (para no pedirlas dos veces)
+let posicionCatalogo = 0;     // Hasta dónde estaba desplazado el catálogo al abrir un detalle
 
 // Atajos a los elementos del HTML
+const vistaCatalogo = document.getElementById('vista-catalogo');
+const vistaDetalle = document.getElementById('vista-detalle');
 const menu = document.getElementById('menu-categorias');
 const botonMenu = document.getElementById('btn-menu');
 const titulo = document.getElementById('titulo-categoria');
@@ -11,6 +16,8 @@ const subtitulo = document.getElementById('subtitulo-categoria');
 const mensaje = document.getElementById('mensaje');
 const lista = document.getElementById('lista-productos');
 const contador = document.getElementById('contador-carrito');
+
+const TITULO_CATALOGO = 'Nexus PC – Catálogo';
 
 // Precios en pesos mexicanos, sin decimales: $4,500
 const formatoPesos = new Intl.NumberFormat('es-MX', {
@@ -49,6 +56,7 @@ function dibujarMenu(categorias) {
     boton.addEventListener('click', () => {
       cerrarMenu();
       seleccionarCategoria(categoria);
+      irAlCatalogo();   // si se estaba viendo un detalle, vuelve al catálogo
     });
     menu.appendChild(boton);
   });
@@ -72,41 +80,59 @@ botonMenu.addEventListener('click', () => {
 });
 document.addEventListener('keydown', evento => { if (evento.key === 'Escape') cerrarMenu(); });
 
-/* ---------- Tarjeta de producto ---------- */
-function crearTarjeta(producto) {
-  const tarjeta = document.createElement('article');
-  tarjeta.className = 'tarjeta';
-
-  // Recuadro gris con la palabra "imagen". Si la foto existe y carga, la reemplaza.
+/* ---------- Piezas reutilizadas por el catálogo y por el detalle ---------- */
+// Recuadro gris con la palabra "imagen". Si la foto existe y carga, la reemplaza.
+function crearImagen(producto) {
   const caja = document.createElement('div');
   caja.className = 'imagen';
-  caja.innerHTML = '<span aria-hidden="true">imagen</span>';
+  const marcador = document.createElement('span');
+  marcador.setAttribute('aria-hidden', 'true');
+  marcador.textContent = 'imagen';
+  caja.appendChild(marcador);
   if (producto.imagen_url) {
     const foto = new Image();
     foto.alt = producto.nombre;
     foto.onload = () => { caja.textContent = ''; caja.appendChild(foto); };
     foto.src = producto.imagen_url;   // si falla, no pasa nada: queda el recuadro
   }
+  return caja;
+}
+
+// Etiqueta según el campo "estado": Disponible, Pocas piezas o Agotado
+function crearEtiqueta(estado) {
+  const etiqueta = document.createElement('span');
+  etiqueta.className = 'etiqueta';
+  if (estado === 'Pocas piezas') etiqueta.classList.add('etiqueta--pocas');
+  if (estado === 'Agotado') etiqueta.classList.add('etiqueta--agotado');
+  etiqueta.textContent = estado;
+  return etiqueta;
+}
+
+/* ---------- Tarjeta de producto ---------- */
+function crearTarjeta(producto) {
+  const tarjeta = document.createElement('article');
+  tarjeta.className = 'tarjeta';
+
+  const caja = crearImagen(producto);
 
   const marca = document.createElement('div');
   marca.className = 'marca';
   marca.textContent = producto.marca;
 
+  // El nombre es un enlace al detalle (#/producto/ID); con CSS toda la tarjeta es clicable
   const nombre = document.createElement('h2');
   nombre.className = 'nombre';
-  nombre.textContent = producto.nombre;
+  const enlace = document.createElement('a');
+  enlace.href = '#/producto/' + producto.id_producto;
+  enlace.textContent = producto.nombre;
+  nombre.appendChild(enlace);
 
   const precio = document.createElement('span');
   precio.className = 'precio';
   precio.textContent = formatoPesos.format(producto.precio);
 
-  // Etiqueta según el campo "estado": Disponible, Pocas piezas o Agotado
   const agotado = producto.estado === 'Agotado';
-  const etiqueta = document.createElement('span');
-  etiqueta.className = 'etiqueta';
-  if (producto.estado === 'Pocas piezas') etiqueta.classList.add('etiqueta--pocas');
-  if (agotado) etiqueta.classList.add('etiqueta--agotado');
-  etiqueta.textContent = producto.estado;
+  const etiqueta = crearEtiqueta(producto.estado);
 
   const fila = document.createElement('div');
   fila.className = 'fila';
@@ -204,7 +230,8 @@ document.addEventListener('click', evento => { if (!caja.contains(evento.target)
 document.addEventListener('keydown', evento => {
   if (evento.key === 'Escape' && !panel.hidden) { cerrarPanel(); botonCarrito.focus(); }
 });
-panelExplorar.addEventListener('click', cerrarPanel);
+// "Explorar catálogo" cierra el panel y, si se estaba viendo un detalle, vuelve al catálogo
+panelExplorar.addEventListener('click', () => { cerrarPanel(); irAlCatalogo(); });
 
 // Redibuja el contador y el panel con lo que haya en el carrito
 function actualizarVistaCarrito() {
@@ -251,6 +278,7 @@ function actualizarVistaCarrito() {
 /* ---------- Cargar y mostrar una categoría ---------- */
 async function seleccionarCategoria(categoria) {
   categoriaActiva = categoria;
+  posicionCatalogo = 0;
   resaltarCategoria(categoria.id_categoria);
   titulo.textContent = categoria.nombre;
   subtitulo.textContent = '';
@@ -268,16 +296,70 @@ async function seleccionarCategoria(categoria) {
   }
 }
 
-/* ---------- Inicio: pedir categorías, dibujar el menú y abrir la primera ---------- */
-async function iniciar() {
-  mostrarCargando();
-  try {
-    const categorias = await obtenerCategorias();
-    dibujarMenu(categorias);
-    seleccionarCategoria(categorias[0]);
-  } catch (error) {
-    mostrarError(iniciar);
+/* ---------- Pantallas: catálogo (#/ o sin nada) y detalle (#/producto/ID) ---------- */
+// Pide las categorías una sola vez y dibuja el menú. Devuelve true si salió bien.
+function cargarCategorias() {
+  if (!promesaCategorias) {
+    promesaCategorias = obtenerCategorias()
+      .then(datos => { categorias = datos; dibujarMenu(datos); return true; })
+      .catch(() => { promesaCategorias = null; return false; });   // se podrá reintentar
   }
+  return promesaCategorias;
+}
+
+// Lee la dirección de la página y dice qué pantalla toca
+function leerRuta() {
+  const coincide = /^#\/producto\/([^/]*)$/.exec(location.hash);
+  return coincide ? { vista: 'detalle', id: coincide[1] } : { vista: 'catalogo' };
+}
+
+// Lleva al catálogo si se estaba en otra pantalla
+function irAlCatalogo() {
+  if (leerRuta().vista !== 'catalogo') location.hash = '#/';
+}
+
+// Muestra el catálogo. Si ya había una categoría abierta, la conserva (y el desplazamiento).
+async function mostrarCatalogo(veniaDeDetalle) {
+  if (categorias.length === 0) mostrarCargando();
+  const listo = await cargarCategorias();
+  if (leerRuta().vista !== 'catalogo') return;   // la persona ya se fue a otro lado
+  if (!listo || categorias.length === 0) {
+    mostrarError(() => mostrarCatalogo(false));
+    return;
+  }
+  if (categoriaActiva) {
+    if (veniaDeDetalle) window.scrollTo(0, posicionCatalogo);
+    return;
+  }
+  // Primera vez: la categoría del producto que se estaba viendo, o la primera de la lista
+  const delProducto = categorias.find(c => c.nombre === categoriaDelDetalle);
+  seleccionarCategoria(delProducto || categorias[0]);
+}
+
+// Cambia de pantalla según la dirección
+function mostrarRuta() {
+  const ruta = leerRuta();
+  if (ruta.vista === 'detalle') {
+    if (!vistaCatalogo.hidden) posicionCatalogo = window.scrollY;
+    vistaCatalogo.hidden = true;
+    vistaDetalle.hidden = false;
+    mostrarDetalle(ruta.id);
+  } else {
+    const veniaDeDetalle = vistaCatalogo.hidden;
+    cancelarDetalle();
+    vistaDetalle.hidden = true;
+    vistaCatalogo.hidden = false;
+    document.title = TITULO_CATALOGO;
+    mostrarCatalogo(veniaDeDetalle);
+  }
+}
+
+// El botón "atrás" del navegador y los enlaces cambian la dirección; aquí se reacciona
+window.addEventListener('hashchange', mostrarRuta);
+
+/* ---------- Inicio: dibujar el menú y mostrar la pantalla que pida la dirección ---------- */
+function iniciar() {
+  mostrarRuta();   // cada pantalla pide las categorías para llenar el menú
 }
 
 actualizarVistaCarrito();   // muestra el carrito guardado (si lo había)
