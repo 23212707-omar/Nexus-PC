@@ -3,7 +3,7 @@
 // Punto de entrada de la API de Nexus PC. Aquí se:
 //   1) lee el .env,
 //   2) crea el servidor Express,
-//   3) conecta las 3 rutas,
+//   3) conecta las rutas (categorías, productos y pedidos),
 //   4) sirve la página (carpeta ../frontend) desde la MISMA dirección,
 //   5) arranca y prueba la conexión con SQL Server.
 // Se ejecuta con:  npm start
@@ -19,7 +19,8 @@ const { obtenerPool } = require('./db/conexion');
 const rutaCategorias = require('./rutas/categorias');
 const rutaProductos = require('./rutas/productos');
 const rutaProductoPorId = require('./rutas/productoPorId');
-const { manejadorErrores } = require('./utilidades/errores');
+const rutaPedidos = require('./rutas/pedidos');
+const { manejadorJsonInvalido, manejadorErrores } = require('./utilidades/errores');
 
 const app = express();
 const PUERTO = process.env.PORT || 3000;
@@ -27,10 +28,18 @@ const PUERTO = process.env.PORT || 3000;
 app.disable('x-powered-by'); // no avisar a cualquiera que usamos Express
 app.set('json spaces', 2);   // JSON con sangría: se lee bien en el navegador
 
+// ----- Lectura del body JSON (para POST /api/pedidos) -----
+// El límite de 100 kb evita que alguien mande un body enorme.
+// Si el JSON viene mal formado (o es demasiado grande), manejadorJsonInvalido
+// responde 400 DATOS_INVALIDOS con el formato único de error, no un HTML.
+app.use(express.json({ limit: '100kb' }));
+app.use(manejadorJsonInvalido);
+
 // ----- Rutas de la API -----
 app.use('/api/categorias', rutaCategorias);   // GET /api/categorias
 app.use('/api/productos', rutaProductos);     // GET /api/productos
 app.use('/api/productos', rutaProductoPorId); // GET /api/productos/:id
+app.use('/api/pedidos', rutaPedidos);         // POST /api/pedidos
 
 // ----- La página (HTML, CSS, JS e imágenes) -----
 // Como la página y la API salen del mismo servidor y del mismo puerto,
