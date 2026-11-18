@@ -1,14 +1,18 @@
 /* app.js – Lo que se ve en pantalla: menú, tarjetas, contador, mensajes y cambio entre pantallas. */
 
-// El carrito vive en js/carrito.js (objeto Carrito) y el detalle de producto en js/detalle.js
+// El carrito vive en js/carrito.js (objeto Carrito), el detalle de producto en js/detalle.js
+// y la pantalla del carrito completo en js/carrito-vista.js
 let categoriaActiva = null;   // La categoría que se está mostrando
 let categorias = [];          // Todas las categorías (se llenan al cargar el menú)
 let promesaCategorias = null; // La petición de categorías (para no pedirlas dos veces)
-let posicionCatalogo = 0;     // Hasta dónde estaba desplazado el catálogo al abrir un detalle
+let posicionCatalogo = 0;     // Hasta dónde estaba desplazado el catálogo al salir de él
 
 // Atajos a los elementos del HTML
 const vistaCatalogo = document.getElementById('vista-catalogo');
 const vistaDetalle = document.getElementById('vista-detalle');
+const vistaCarrito = document.getElementById('vista-carrito');
+const vistaCompra = document.getElementById('vista-compra');
+const compraTitulo = document.getElementById('compra-titulo');
 const menu = document.getElementById('menu-categorias');
 const botonMenu = document.getElementById('btn-menu');
 const titulo = document.getElementById('titulo-categoria');
@@ -230,8 +234,10 @@ document.addEventListener('click', evento => { if (!caja.contains(evento.target)
 document.addEventListener('keydown', evento => {
   if (evento.key === 'Escape' && !panel.hidden) { cerrarPanel(); botonCarrito.focus(); }
 });
-// "Explorar catálogo" cierra el panel y, si se estaba viendo un detalle, vuelve al catálogo
+// "Explorar catálogo" cierra el panel y, si se estaba en otra pantalla, vuelve al catálogo
 panelExplorar.addEventListener('click', () => { cerrarPanel(); irAlCatalogo(); });
+// "Ver carrito" cierra el panel y abre la pantalla completa del carrito
+panelVer.addEventListener('click', () => { cerrarPanel(); location.hash = '#/carrito'; });
 
 // Redibuja el contador y el panel con lo que haya en el carrito
 function actualizarVistaCarrito() {
@@ -296,7 +302,7 @@ async function seleccionarCategoria(categoria) {
   }
 }
 
-/* ---------- Pantallas: catálogo (#/ o sin nada) y detalle (#/producto/ID) ---------- */
+/* ---------- Pantallas: catálogo (#/), detalle (#/producto/ID), carrito (#/carrito) y compra (#/compra) ---------- */
 // Pide las categorías una sola vez y dibuja el menú. Devuelve true si salió bien.
 function cargarCategorias() {
   if (!promesaCategorias) {
@@ -309,8 +315,12 @@ function cargarCategorias() {
 
 // Lee la dirección de la página y dice qué pantalla toca
 function leerRuta() {
-  const coincide = /^#\/producto\/([^/]*)$/.exec(location.hash);
-  return coincide ? { vista: 'detalle', id: coincide[1] } : { vista: 'catalogo' };
+  const hash = location.hash;
+  const coincide = /^#\/producto\/([^/]*)$/.exec(hash);
+  if (coincide) return { vista: 'detalle', id: coincide[1] };
+  if (hash === '#/carrito') return { vista: 'carrito' };
+  if (hash === '#/compra') return { vista: 'compra' };
+  return { vista: 'catalogo' };
 }
 
 // Lleva al catálogo si se estaba en otra pantalla
@@ -319,7 +329,7 @@ function irAlCatalogo() {
 }
 
 // Muestra el catálogo. Si ya había una categoría abierta, la conserva (y el desplazamiento).
-async function mostrarCatalogo(veniaDeDetalle) {
+async function mostrarCatalogo(veniaDeOtraPantalla) {
   if (categorias.length === 0) mostrarCargando();
   const listo = await cargarCategorias();
   if (leerRuta().vista !== 'catalogo') return;   // la persona ya se fue a otro lado
@@ -328,7 +338,7 @@ async function mostrarCatalogo(veniaDeDetalle) {
     return;
   }
   if (categoriaActiva) {
-    if (veniaDeDetalle) window.scrollTo(0, posicionCatalogo);
+    if (veniaDeOtraPantalla) window.scrollTo(0, posicionCatalogo);
     return;
   }
   // Primera vez: la categoría del producto que se estaba viendo, o la primera de la lista
@@ -336,22 +346,41 @@ async function mostrarCatalogo(veniaDeDetalle) {
   seleccionarCategoria(delProducto || categorias[0]);
 }
 
+// Muestra solo la pantalla indicada y oculta las demás
+function mostrarSoloVista(nombre) {
+  vistaCatalogo.hidden = nombre !== 'catalogo';
+  vistaDetalle.hidden = nombre !== 'detalle';
+  vistaCarrito.hidden = nombre !== 'carrito';
+  vistaCompra.hidden = nombre !== 'compra';
+}
+
 // Cambia de pantalla según la dirección
 function mostrarRuta() {
   const ruta = leerRuta();
+  const veniaDeOtraPantalla = vistaCatalogo.hidden;
+  // Al salir del catálogo se recuerda hasta dónde estaba desplazado
+  if (ruta.vista !== 'catalogo' && !vistaCatalogo.hidden) posicionCatalogo = window.scrollY;
+  if (ruta.vista !== 'detalle') cancelarDetalle();
+  mostrarSoloVista(ruta.vista);
+
   if (ruta.vista === 'detalle') {
-    if (!vistaCatalogo.hidden) posicionCatalogo = window.scrollY;
-    vistaCatalogo.hidden = true;
-    vistaDetalle.hidden = false;
     mostrarDetalle(ruta.id);
+  } else if (ruta.vista === 'carrito') {
+    mostrarCarrito();
+  } else if (ruta.vista === 'compra') {
+    mostrarCompra();
   } else {
-    const veniaDeDetalle = vistaCatalogo.hidden;
-    cancelarDetalle();
-    vistaDetalle.hidden = true;
-    vistaCatalogo.hidden = false;
     document.title = TITULO_CATALOGO;
-    mostrarCatalogo(veniaDeDetalle);
+    mostrarCatalogo(veniaDeOtraPantalla);
   }
+}
+
+// Pantalla 5 (confirmación de compra): todavía no existe, solo se muestra un aviso sencillo
+function mostrarCompra() {
+  document.title = 'Confirmación de compra – Nexus PC';
+  window.scrollTo(0, 0);
+  cargarCategorias();   // llena el menú del encabezado
+  compraTitulo.focus({ preventScroll: true });
 }
 
 // El botón "atrás" del navegador y los enlaces cambian la dirección; aquí se reacciona
