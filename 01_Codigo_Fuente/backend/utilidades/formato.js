@@ -28,6 +28,12 @@ function formatearProducto(fila) {
   };
 }
 
+// Número de pedido que ve la persona: "NX-" + IdPedido con 4 dígitos (NX-0001).
+// No se guarda en la base; se arma cada vez (decisión 4 de la especificación).
+function numeroPedido(idPedido) {
+  return 'NX-' + String(idPedido).padStart(4, '0');
+}
+
 // Tabla 3.1 de la especificación: cómo se llama cada clave de la base
 // (columna "Clave") en el JSON, y de qué tipo es su valor.
 // El orden de esta lista es el orden en que salen en la respuesta.
@@ -79,4 +85,4 @@ function construirEspecificaciones(filas) {
   return resultado;
 }
 
-module.exports = { calcularEstado, formatearProducto, construirEspecificaciones };
+module.exports = { calcularEstado, formatearProducto, numeroPedido, construirEspecificaciones };
