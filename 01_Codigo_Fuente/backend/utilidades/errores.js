@@ -23,15 +23,46 @@ function datosInvalidos(res, mensaje, detalles) {
   enviarError(res, 400, 'DATOS_INVALIDOS', mensaje, detalles);
 }
 
+// Frase que se agrega a los errores 404 y 409 de POST /api/pedidos, porque
+// ahí la transacción se cancela y no queda nada guardado (sección 5.4).
+const MENSAJE_SIN_CAMBIOS = 'No se guardó ningún cambio.';
+
 // 404: el producto no existe.
-function productoNoEncontrado(res, idProducto) {
+// "sufijo" es opcional: GET /api/productos/:id no lo usa y su mensaje no cambia;
+// POST /api/pedidos pasa MENSAJE_SIN_CAMBIOS.
+function productoNoEncontrado(res, idProducto, sufijo) {
+  const mensaje = 'No existe un producto con el id indicado.' + (sufijo ? ' ' + sufijo : '');
+  enviarError(res, 404, 'PRODUCTO_NO_ENCONTRADO', mensaje, { id_producto: idProducto });
+}
+
+// 409: una línea del pedido pide más piezas de las que hay.
+// Recibe { idProducto, nombre, disponible, solicitado }.
+function stockInsuficiente(res, { idProducto, nombre, disponible, solicitado }) {
   enviarError(
     res,
-    404,
-    'PRODUCTO_NO_ENCONTRADO',
-    'No existe un producto con el id indicado.',
-    { id_producto: idProducto }
+    409,
+    'STOCK_INSUFICIENTE',
+    `No hay suficientes piezas de ${nombre}. Disponibles: ${disponible}; solicitadas: ${solicitado}. ${MENSAJE_SIN_CAMBIOS}`,
+    { id_producto: idProducto, nombre, disponible, solicitado }
   );
+}
+
+// 400: el body de la petición no se pudo leer (JSON mal formado o demasiado grande).
+// Va justo DESPUÉS de express.json() en servidor.js. Sin esto, Express
+// respondería con un HTML o un 500 en lugar del formato único de error.
+// Los demás errores se dejan pasar con next(error) hasta manejadorErrores.
+function manejadorJsonInvalido(error, req, res, next) {
+  if (error && error.type === 'entity.parse.failed') {
+    return datosInvalidos(res, 'El cuerpo de la petición no es un JSON válido.', [
+      { campo: 'body', mensaje: 'El JSON está mal formado.' }
+    ]);
+  }
+  if (error && error.type === 'entity.too.large') {
+    return datosInvalidos(res, 'El cuerpo de la petición es demasiado grande.', [
+      { campo: 'body', mensaje: 'El JSON es demasiado grande (máximo 100 kb).' }
+    ]);
+  }
+  next(error);
 }
 
 // 500: cualquier falla inesperada (base de datos caída, error de programación, etc.).
@@ -47,4 +78,11 @@ function manejadorErrores(error, req, res, next) {
   enviarError(res, 500, 'ERROR_INTERNO', MENSAJE_ERROR_INTERNO);
 }
 
-module.exports = { datosInvalidos, productoNoEncontrado, manejadorErrores };
+module.exports = {
+  MENSAJE_SIN_CAMBIOS,
+  datosInvalidos,
+  productoNoEncontrado,
+  stockInsuficiente,
+  manejadorJsonInvalido,
+  manejadorErrores
+};

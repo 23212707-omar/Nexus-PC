@@ -4,20 +4,21 @@ API de Nexus PC hecha con **Node.js + Express** y conectada a **SQL Server** con
 
 | Dato | Valor |
 |---|---|
-| Versión | v0.1 (primera versión de la API) |
+| Versión | v0.2 (agrega el registro de pedidos) |
 | Responsable | Angel (Backend / API) |
 | Base de datos | `NexusPC.sql` v0.2 (fuente de verdad) |
 | Especificación | `API_Especificacion.md` v0.2 |
 
 ## 1. Qué incluye esta versión
 
-Solo 3 rutas de la especificación (las demás son de etapas posteriores):
+4 rutas de la especificación (las demás son de etapas posteriores):
 
 | Ruta | Qué hace |
 |---|---|
 | `GET /api/categorias` | Lista las 7 categorías con su número de productos |
 | `GET /api/productos` | Lista los productos. Filtro opcional: `?categoria_id=1` |
 | `GET /api/productos/:id` | Detalle de un producto con descripción y `especificaciones` |
+| `POST /api/pedidos` | Registra un pedido en una sola transacción: descuenta el stock, guarda el pedido y devuelve `201` con el pedido completo. Los precios salen siempre de la base |
 
 Además, Express sirve la carpeta `../frontend` (con su subcarpeta `img`) en la **misma dirección y puerto** que la API, por lo que no hace falta configurar CORS.
 
@@ -33,11 +34,12 @@ Además, Express sirve la carpeta `../frontend` (con su subcarpeta `img`) en la 
 │   ├── rutas/
 │   │   ├── categorias.js        ← GET /api/categorias
 │   │   ├── productos.js         ← GET /api/productos
-│   │   └── productoPorId.js     ← GET /api/productos/:id
+│   │   ├── productoPorId.js     ← GET /api/productos/:id
+│   │   └── pedidos.js           ← POST /api/pedidos
 │   ├── utilidades/
 │   │   ├── errores.js           ← formato único de error
-│   │   ├── validaciones.js      ← validar ids
-│   │   └── formato.js           ← snake_case, estado, especificaciones
+│   │   ├── validaciones.js      ← validar ids y el body del pedido
+│   │   └── formato.js           ← snake_case, estado, especificaciones, número de pedido
 │   ├── package.json
 │   ├── .env.example             ← plantilla (SÍ se sube)
 │   └── .env                     ← tus datos reales (NO se sube)
@@ -125,7 +127,7 @@ Notas:
 
 - Usa una contraseña de al menos 8 caracteres con mayúsculas, minúsculas y números o símbolos. **No uses `#`, comillas ni espacios** (el archivo `.env` los interpreta de forma especial).
 - `NexusPC.sql` no borra la base de datos, solo sus tablas, así que el usuario se conserva cuando vuelves a ejecutarlo. Si algún día haces `DROP DATABASE NexusPC`, vuelve a ejecutar `Crear_Usuario_API.sql`.
-- Hoy la API solo lee, pero el usuario ya tiene `db_datawriter` porque el registro de pedidos (Etapa III) necesita escribir en `Pedidos`, `DetallePedido` y `Productos`.
+- `POST /api/pedidos` escribe en `Pedidos` y `DetallePedido` y descuenta el stock en `Productos`; para eso sirve el rol `db_datawriter` del usuario.
 
 ### Paso 5. Reiniciar el servicio de SQL Server
 
@@ -227,7 +229,32 @@ Abre en el navegador:
 - <http://localhost:3000/api/productos?categoria_id=1>
 - <http://localhost:3000/api/productos/11>
 
+`POST /api/pedidos` no se puede abrir desde el navegador; se prueba con `curl.exe` (ver el ejemplo de la sección «Registrar un pedido»).
+
 Para detener el servidor: `Ctrl + C` en la terminal.
+
+### Registrar un pedido (`POST /api/pedidos`)
+
+Body (sin precios; si llegan `precio`, `precio_unitario`, `subtotal` o `total`, se ignoran):
+
+```json
+{
+  "nombre_comprador": "Ana López",
+  "correo": "ana@correo.com",
+  "telefono": "6641234567",
+  "items": [ { "id_producto": 1, "cantidad": 1 }, { "id_producto": 6, "cantidad": 2 } ]
+}
+```
+
+Reglas: `nombre_comprador` (1 a 100) y `correo` (máx. 120, un solo `@`, sin espacios, con punto en el dominio) son obligatorios; `telefono` es opcional (máx. 20); `items` no puede estar vacío y cada línea lleva enteros `id_producto` y `cantidad` (≥ 1). Las líneas repetidas del mismo producto se suman. Todo se valida antes de abrir la transacción y los problemas se devuelven juntos en `detalles`.
+
+Ejemplo en PowerShell (guarda el JSON en `pedido.json`, UTF-8 sin BOM):
+
+```powershell
+curl.exe -i -X POST http://localhost:3000/api/pedidos -H "Content-Type: application/json" --data-binary "@pedido.json"
+```
+
+Si una línea falla, se cancela todo y la base queda igual. Estas pruebas cambian el stock: para dejarlo como al inicio, ejecuta `NexusPC.sql` completo.
 
 ### Formato de error
 
@@ -239,8 +266,9 @@ Todos los errores tienen la misma forma:
 
 | Código | HTTP | Cuándo |
 |---|---|---|
-| `DATOS_INVALIDOS` | 400 | `categoria_id` o `:id` no es un entero (solo dígitos, hasta 2147483647) |
-| `PRODUCTO_NO_ENCONTRADO` | 404 | El id es válido pero ese producto no existe |
+| `DATOS_INVALIDOS` | 400 | `categoria_id` o `:id` no es un entero (solo dígitos, hasta 2147483647); o el body de `POST /api/pedidos` es inválido o es un JSON mal formado |
+| `PRODUCTO_NO_ENCONTRADO` | 404 | El id es válido pero ese producto no existe (en un pedido, algún `id_producto` no existe y no se guarda nada) |
+| `STOCK_INSUFICIENTE` | 409 | Una línea del pedido pide más piezas de las que hay; el detalle dice qué producto, cuántas hay y cuántas se pidieron |
 | `ERROR_INTERNO` | 500 | Falla inesperada. Mensaje genérico; el detalle técnico solo aparece en la terminal del servidor |
 
 ## 7. Errores comunes y solución
@@ -270,6 +298,7 @@ Tras corregir un problema de conexión **no hace falta reiniciar `npm start`**: 
 
 - Todas las consultas son **parametrizadas** (`request.input(...)`): ningún dato del navegador se pega dentro del texto SQL.
 - Hay **una sola conexión reutilizable** (pool) para todo el servidor.
+- Los precios nunca vienen del navegador: el pedido usa el precio de la base y el stock se descuenta con una sola instrucción atómica dentro de una transacción.
 - Los datos de conexión viven solo en `.env` y `.env` está en `.gitignore`. Antes de cada commit revisa con `git status` que `.env` **no** aparezca.
 - El error 500 devuelve un mensaje genérico y nunca revela nombres de tablas, consultas ni texto de errores de SQL Server.
 - El usuario de la base (`nexus_app`) no es administrador: solo tiene los roles `db_datareader` y `db_datawriter` sobre `NexusPC` y no puede borrar tablas.
