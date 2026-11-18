@@ -177,7 +177,7 @@ h1 { margin: 0; font-size: 24px; color: var(--azul); }
   .mensaje-acciones .boton-volver { width: auto; }
 }
 
-/* ---------- Carrito completo (Pantalla 3) y aviso de compra ---------- */
+/* ---------- Carrito completo (Pantalla 3) y pantalla de compra (Pantalla 5) ---------- */
 .carrito, .pantalla-compra { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
 .carrito-titulo { margin-bottom: 12px; }
 .carrito-titulo:focus { outline: none; }   /* el título recibe el foco al abrir la pantalla, pero no es un control */
@@ -240,10 +240,61 @@ h1 { margin: 0; font-size: 24px; color: var(--azul); }
 .resumen-total { margin-top: 8px; padding: 10px 0 14px; border-top: 2px solid var(--azul); font-size: 18px; font-weight: 700; }
 .carrito-resumen .boton-principal, .carrito-resumen .boton-volver { width: 100%; margin-top: 10px; }
 
+/* ---------- Confirmación de compra (Pantalla 5) ---------- */
+.pantalla-compra { --error: #b3261e; }
+.compra-contenido { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 24px; align-items: start; }
+.compra-datos { padding: 16px; background: var(--blanco); border: 2px solid var(--gris-borde); border-radius: 8px; }
+.compra-datos h2 { margin: 0 0 14px; font-size: 20px; color: var(--azul); }
+
+/* Campos del formulario */
+.campo { margin-bottom: 16px; }
+.campo label { display: block; margin-bottom: 4px; font-weight: 600; }
+.campo-marca { font-weight: 400; color: var(--gris-texto); }
+.campo input { display: block; width: 100%; min-height: 44px; padding: 8px 10px; font: inherit; color: var(--texto);
+        background: var(--blanco); border: 2px solid var(--gris-borde); border-radius: 6px; }
+.campo input[aria-invalid="true"] { border-color: var(--error); }
+.campo-error { margin: 4px 0 0; font-size: 14px; font-weight: 600; color: var(--error); }
+.campo-nota { margin: 0 0 6px; font-size: 13px; color: var(--gris-texto); }
+
+/* Avisos de error o información arriba del formulario */
+.compra-alerta { margin-bottom: 16px; padding: 14px 16px; background: #fdf0ee; border: 2px solid var(--error); border-radius: 8px; }
+.compra-alerta--info { background: var(--blanco); border-color: var(--azul); }
+.compra-alerta:focus { outline: none; }   /* recibe el foco para que se lea, pero no es un control */
+.compra-alerta strong { display: block; }
+.compra-alerta p { margin: 4px 0 0; }
+.compra-acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 12px; }
+
+/* Líneas del resumen del pedido (también en la pantalla de éxito) */
+.compra-linea { padding: 4px 0; }
+.compra-linea-fila { display: flex; justify-content: space-between; gap: 12px; overflow-wrap: anywhere; }
+.compra-linea-precio { white-space: nowrap; }
+.compra-linea--problema { margin: 4px 0; padding: 6px 8px; border: 2px dashed var(--error); border-radius: 6px; color: var(--error); }
+.compra-linea-nota { margin: 2px 0 0; font-size: 13px; font-weight: 600; }
+
+/* Botón mientras se envía */
+.boton-principal[aria-disabled="true"], .boton-principal[aria-disabled="true"]:hover {
+        background: var(--gris-texto); border-color: var(--gris-texto); cursor: wait; }
+
+/* Pedido guardado */
+.compra-exito { max-width: 480px; margin: 24px auto 0; text-align: center; }
+.compra-exito-marca { display: flex; align-items: center; justify-content: center; width: 64px; height: 64px;
+        margin: 0 auto 12px; border: 3px solid var(--azul); border-radius: 50%; font-size: 32px; color: var(--azul); }
+.compra-exito h1 { margin: 0 0 8px; font-size: 26px; color: var(--azul); }
+.compra-exito h1:focus { outline: none; }   /* el título recibe el foco al aparecer, pero no es un control */
+.compra-exito p { margin: 0; }
+.compra-numero { display: inline-block; margin: 8px 0 16px !important; padding: 8px 20px; border: 2px dashed var(--azul);
+        border-radius: 6px; font-size: 24px; font-weight: 700; color: var(--azul); }
+.compra-exito-resumen { margin-bottom: 12px; padding: 14px 16px; text-align: left; background: var(--blanco);
+        border: 2px solid var(--gris-borde); border-radius: 8px; }
+.compra-exito-resumen .resumen-total { padding-bottom: 0; }
+.compra-exito .boton-principal { display: inline-flex; margin-top: 14px; }
+
 @media (max-width: 700px) {
   .carrito, .pantalla-compra { padding: 14px 12px 32px; }
   .carrito-contenido { grid-template-columns: minmax(0, 1fr); gap: 16px; }
   .carrito-lista-caja { padding: 12px; }
+  .compra-contenido { grid-template-columns: minmax(0, 1fr); gap: 16px; }
+  .compra-datos { padding: 12px; }
   .carrito-encabezado { display: none; }
   /* Cada producto es una tarjeta: imagen y nombre arriba; cantidad y subtotal abajo */
   .carrito-fila { grid-template-columns: 64px minmax(0, 1fr) auto;

@@ -90,19 +90,71 @@
     </div>
   </main>
 
-  <!-- Pantalla 5: confirmación de compra (dirección #/compra). Por ahora solo un aviso -->
+  <!-- Pantalla 5: confirmación de compra (dirección #/compra) -->
   <main id="vista-compra" class="pantalla-compra" hidden>
     <h1 id="compra-titulo" class="carrito-titulo" tabindex="-1">Confirmación de compra</h1>
-    <div class="mensaje mensaje--error" role="status">
-      Esta pantalla estará disponible en la siguiente etapa. Tu carrito se conserva.
-      <div class="mensaje-acciones"><a class="boton-volver" href="#/carrito">Volver al carrito</a></div>
+    <p id="compra-estado" class="solo-lectores" role="status"></p>
+    <!-- Avisos de la compra (error de stock, datos inválidos, sin conexión...). Región aria-live -->
+    <div id="compra-aviso" aria-live="polite"></div>
+
+    <!-- Carrito sin productos: no hay nada que comprar -->
+    <div id="compra-vacio" class="carrito-vacio" hidden>
+      <p>Aún no agregaste productos.</p>
+      <a class="boton-volver" href="#/">Explorar catálogo</a>
     </div>
+
+    <!-- Datos del comprador a la izquierda y resumen a la derecha (en celular, abajo) -->
+    <form id="compra-formulario" class="compra-contenido" novalidate hidden>
+      <section class="compra-datos" aria-labelledby="compra-datos-titulo">
+        <h2 id="compra-datos-titulo">Datos del comprador</h2>
+        <div class="campo">
+          <label for="compra-nombre">Nombre completo <span class="campo-marca">(obligatorio)</span></label>
+          <input id="compra-nombre" type="text" autocomplete="name" placeholder="Ej. Ana López" aria-required="true">
+          <p id="compra-nombre-error" class="campo-error" hidden></p>
+        </div>
+        <div class="campo">
+          <label for="compra-correo">Correo electrónico <span class="campo-marca">(obligatorio)</span></label>
+          <input id="compra-correo" type="email" autocomplete="email" placeholder="ejemplo@correo.com" aria-required="true">
+          <p id="compra-correo-error" class="campo-error" hidden></p>
+        </div>
+        <div class="campo">
+          <label for="compra-telefono">Teléfono <span class="campo-marca">(opcional)</span></label>
+          <input id="compra-telefono" type="tel" autocomplete="tel" placeholder="664 000 0000">
+          <p id="compra-telefono-error" class="campo-error" hidden></p>
+        </div>
+        <p class="campo-nota">Tienda de prueba: no se realiza ningún cobro.</p>
+      </section>
+      <aside class="carrito-resumen" aria-labelledby="compra-resumen-titulo">
+        <h2 id="compra-resumen-titulo">Resumen del pedido</h2>
+        <p class="resumen-fila"><span>Artículos</span><span id="compra-resumen-articulos"></span></p>
+        <ul id="compra-resumen-lineas" class="resumen-lineas"></ul>
+        <p class="resumen-total"><span>Total</span><span id="compra-resumen-total"></span></p>
+        <p class="campo-nota">El total final lo confirma la tienda al registrar el pedido.</p>
+        <button id="compra-confirmar" class="boton-principal" type="submit">Confirmar pedido</button>
+        <a class="boton-volver" href="#/carrito">Volver al carrito</a>
+      </aside>
+    </form>
+
+    <!-- Pedido guardado -->
+    <section id="compra-exito" class="compra-exito" aria-labelledby="compra-exito-titulo" hidden>
+      <div class="compra-exito-marca" aria-hidden="true">✓</div>
+      <h1 id="compra-exito-titulo" tabindex="-1">¡Pedido registrado!</h1>
+      <p>Tu número de pedido es</p>
+      <p id="compra-numero" class="compra-numero"></p>
+      <div class="compra-exito-resumen">
+        <ul id="compra-exito-lineas" class="resumen-lineas"></ul>
+        <p class="resumen-total"><span>Total</span><span id="compra-exito-total"></span></p>
+      </div>
+      <p id="compra-exito-nombre" class="campo-nota"></p>
+      <a class="boton-principal" href="#/">Seguir comprando</a>
+    </section>
   </main>
 
   <script src="js/api.js"></script>
   <script src="js/carrito.js"></script>
   <script src="js/detalle.js"></script>
   <script src="js/carrito-vista.js"></script>
+  <script src="js/compra.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>

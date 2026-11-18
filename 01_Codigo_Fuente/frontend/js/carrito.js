@@ -64,6 +64,23 @@ const Carrito = (function () {
       return { ok: true };
     },
 
+    // Guarda el stock real de un producto (por ejemplo, el que informó la API en un error 409).
+    // Si la cantidad era mayor al stock, la baja al stock; si el stock es 0, quita la línea.
+    // Devuelve { ok: true, cantidad, quitada } o { ok: false } si el producto no está o el stock no es válido.
+    actualizarStock(idProducto, stock) {
+      const linea = lista.find(p => p.id_producto === idProducto);
+      if (!linea || !Number.isInteger(stock) || stock < 0) return { ok: false };
+      if (stock === 0) {
+        lista = lista.filter(p => p.id_producto !== idProducto);
+        guardar();
+        return { ok: true, cantidad: 0, quitada: true };
+      }
+      linea.stock = stock;
+      if (linea.cantidad > stock) linea.cantidad = stock;
+      guardar();
+      return { ok: true, cantidad: linea.cantidad, quitada: false };
+    },
+
     // Quita un producto completo. Devuelve true si estaba en el carrito.
     quitar(idProducto) {
       const antes = lista.length;
