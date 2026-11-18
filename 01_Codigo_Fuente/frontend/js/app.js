@@ -6,6 +6,7 @@ let categoriaActiva = null;   // La categoría que se está mostrando
 let categorias = [];          // Todas las categorías (se llenan al cargar el menú)
 let promesaCategorias = null; // La petición de categorías (para no pedirlas dos veces)
 let posicionCatalogo = 0;     // Hasta dónde estaba desplazado el catálogo al salir de él
+let catalogoDesactualizado = false;   // true cuando cambió el stock (compra o error 409): al volver se vuelve a pedir la categoría
 
 // Atajos a los elementos del HTML
 const vistaCatalogo = document.getElementById('vista-catalogo');
@@ -338,7 +339,12 @@ async function mostrarCatalogo(veniaDeOtraPantalla) {
     return;
   }
   if (categoriaActiva) {
-    if (veniaDeOtraPantalla) window.scrollTo(0, posicionCatalogo);
+    if (catalogoDesactualizado) {   // el stock cambió: se vuelve a pedir la categoría para mostrar los datos al día
+      catalogoDesactualizado = false;
+      seleccionarCategoria(categoriaActiva);
+    } else if (veniaDeOtraPantalla) {
+      window.scrollTo(0, posicionCatalogo);
+    }
     return;
   }
   // Primera vez: la categoría del producto que se estaba viendo, o la primera de la lista
@@ -375,13 +381,7 @@ function mostrarRuta() {
   }
 }
 
-// Pantalla 5 (confirmación de compra): todavía no existe, solo se muestra un aviso sencillo
-function mostrarCompra() {
-  document.title = 'Confirmación de compra – Nexus PC';
-  window.scrollTo(0, 0);
-  cargarCategorias();   // llena el menú del encabezado
-  compraTitulo.focus({ preventScroll: true });
-}
+// La pantalla 5 (confirmación de compra) está en js/compra.js: mostrarCompra()
 
 // El botón "atrás" del navegador y los enlaces cambian la dirección; aquí se reacciona
 window.addEventListener('hashchange', mostrarRuta);
