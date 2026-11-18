@@ -22,7 +22,7 @@
           <ul id="panel-lista" class="panel-lista" tabindex="0" aria-label="Productos del carrito"></ul>
           <p id="panel-vacio" class="panel-vacio" hidden>Aún no agregaste productos.</p>
           <p id="panel-total" class="panel-total"><span>Total</span><span id="panel-total-valor"></span></p>
-          <button id="panel-ver" class="panel-boton" type="button" disabled>Disponible en la siguiente etapa</button>
+          <button id="panel-ver" class="panel-boton" type="button">Ver carrito</button>
           <button id="panel-explorar" class="panel-boton" type="button" hidden>Explorar catálogo</button>
         </section>
       </div>
@@ -51,9 +51,58 @@
     <article id="detalle-contenido" class="detalle-producto" hidden></article>
   </main>
 
+  <!-- Pantalla 3: carrito completo (dirección #/carrito). Lo llena carrito-vista.js -->
+  <main id="vista-carrito" class="carrito" hidden>
+    <h1 id="carrito-titulo" class="carrito-titulo" tabindex="-1">Tu carrito</h1>
+    <!-- Avisos breves: "Quitaste...", "Vaciaste el carrito." -->
+    <p id="carrito-aviso" class="aviso-stock carrito-aviso" role="status" aria-live="polite" hidden></p>
+
+    <!-- Carrito sin productos -->
+    <div id="carrito-vacio" class="carrito-vacio" hidden>
+      <p>Aún no agregaste productos.</p>
+      <a class="boton-volver" href="#/">Explorar catálogo</a>
+    </div>
+
+    <!-- Carrito con productos: lista a la izquierda y resumen a la derecha (en celular, abajo) -->
+    <div id="carrito-contenido" class="carrito-contenido" hidden>
+      <section class="carrito-lista-caja" aria-label="Productos del carrito">
+        <div class="carrito-encabezado" aria-hidden="true">
+          <span>Producto</span><span>Precio</span><span>Cantidad</span><span>Subtotal</span>
+        </div>
+        <ul id="carrito-lista" class="carrito-lista"></ul>
+        <div class="carrito-pie">
+          <button id="carrito-vaciar" class="boton-texto" type="button">Vaciar carrito</button>
+          <div id="carrito-confirmacion" class="carrito-confirmacion" role="group" aria-label="Confirmar que se vacía el carrito" hidden>
+            <p>¿Seguro que quieres vaciar el carrito? Se quitarán todos los productos.</p>
+            <button id="carrito-confirmar-vaciar" class="boton-principal" type="button">Sí, vaciar</button>
+            <button id="carrito-cancelar-vaciar" class="boton-secundario" type="button">Cancelar</button>
+          </div>
+        </div>
+      </section>
+      <aside class="carrito-resumen" aria-labelledby="resumen-titulo">
+        <h2 id="resumen-titulo">Resumen</h2>
+        <p class="resumen-fila"><span>Artículos</span><span id="resumen-articulos"></span></p>
+        <ul id="resumen-lineas" class="resumen-lineas"></ul>
+        <p class="resumen-total"><span>Total</span><span id="resumen-total"></span></p>
+        <a class="boton-principal" href="#/compra">Continuar con la compra</a>
+        <a class="boton-volver" href="#/">Seguir comprando</a>
+      </aside>
+    </div>
+  </main>
+
+  <!-- Pantalla 5: confirmación de compra (dirección #/compra). Por ahora solo un aviso -->
+  <main id="vista-compra" class="pantalla-compra" hidden>
+    <h1 id="compra-titulo" class="carrito-titulo" tabindex="-1">Confirmación de compra</h1>
+    <div class="mensaje mensaje--error" role="status">
+      Esta pantalla estará disponible en la siguiente etapa. Tu carrito se conserva.
+      <div class="mensaje-acciones"><a class="boton-volver" href="#/carrito">Volver al carrito</a></div>
+    </div>
+  </main>
+
   <script src="js/api.js"></script>
   <script src="js/carrito.js"></script>
   <script src="js/detalle.js"></script>
+  <script src="js/carrito-vista.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
