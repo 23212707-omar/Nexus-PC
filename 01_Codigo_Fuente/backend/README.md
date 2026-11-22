@@ -4,14 +4,14 @@ API de Nexus PC hecha con **Node.js + Express** y conectada a **SQL Server** con
 
 | Dato | Valor |
 |---|---|
-| Versión | v0.2 (agrega el registro de pedidos) |
+| Versión | v0.3 (agrega la compatibilidad entre productos) |
 | Responsable | Angel (Backend / API) |
 | Base de datos | `NexusPC.sql` v0.2 (fuente de verdad) |
 | Especificación | `API_Especificacion.md` v0.2 |
 
 ## 1. Qué incluye esta versión
 
-4 rutas de la especificación (las demás son de etapas posteriores):
+5 rutas de la especificación (las demás son de etapas posteriores):
 
 | Ruta | Qué hace |
 |---|---|
@@ -19,6 +19,7 @@ API de Nexus PC hecha con **Node.js + Express** y conectada a **SQL Server** con
 | `GET /api/productos` | Lista los productos. Filtro opcional: `?categoria_id=1` |
 | `GET /api/productos/:id` | Detalle de un producto con descripción y `especificaciones` |
 | `POST /api/pedidos` | Registra un pedido en una sola transacción: descuenta el stock, guarda el pedido y devuelve `201` con el pedido completo. Los precios salen siempre de la base |
+| `POST /api/compatibilidad` | Lista los productos de una categoría indicando si son compatibles con un producto base y con el carrito (reglas R1 a R4). Solo lee la base; no cambia datos ni stock |
 
 Además, Express sirve la carpeta `../frontend` (con su subcarpeta `img`) en la **misma dirección y puerto** que la API, por lo que no hace falta configurar CORS.
 
@@ -35,11 +36,13 @@ Además, Express sirve la carpeta `../frontend` (con su subcarpeta `img`) en la 
 │   │   ├── categorias.js        ← GET /api/categorias
 │   │   ├── productos.js         ← GET /api/productos
 │   │   ├── productoPorId.js     ← GET /api/productos/:id
-│   │   └── pedidos.js           ← POST /api/pedidos
+│   │   ├── pedidos.js           ← POST /api/pedidos
+│   │   └── compatibilidad.js    ← POST /api/compatibilidad
 │   ├── utilidades/
 │   │   ├── errores.js           ← formato único de error
-│   │   ├── validaciones.js      ← validar ids y el body del pedido
-│   │   └── formato.js           ← snake_case, estado, especificaciones, número de pedido
+│   │   ├── validaciones.js      ← validar ids y el body del pedido y de la compatibilidad
+│   │   ├── formato.js           ← snake_case, estado, especificaciones, número de pedido
+│   │   └── compatibilidad.js    ← reglas R1 a R4 (funciones puras)
 │   ├── package.json
 │   ├── .env.example             ← plantilla (SÍ se sube)
 │   └── .env                     ← tus datos reales (NO se sube)
@@ -127,7 +130,7 @@ Notas:
 
 - Usa una contraseña de al menos 8 caracteres con mayúsculas, minúsculas y números o símbolos. **No uses `#`, comillas ni espacios** (el archivo `.env` los interpreta de forma especial).
 - `NexusPC.sql` no borra la base de datos, solo sus tablas, así que el usuario se conserva cuando vuelves a ejecutarlo. Si algún día haces `DROP DATABASE NexusPC`, vuelve a ejecutar `Crear_Usuario_API.sql`.
-- `POST /api/pedidos` escribe en `Pedidos` y `DetallePedido` y descuenta el stock en `Productos`; para eso sirve el rol `db_datawriter` del usuario.
+- `POST /api/pedidos` escribe en `Pedidos` y `DetallePedido` y descuenta el stock en `Productos`; para eso sirve el rol `db_datawriter` del usuario. `POST /api/compatibilidad` solo lee (basta `db_datareader`).
 
 ### Paso 5. Reiniciar el servicio de SQL Server
 
@@ -229,7 +232,7 @@ Abre en el navegador:
 - <http://localhost:3000/api/productos?categoria_id=1>
 - <http://localhost:3000/api/productos/11>
 
-`POST /api/pedidos` no se puede abrir desde el navegador; se prueba con `curl.exe` (ver el ejemplo de la sección «Registrar un pedido»).
+`POST /api/pedidos` y `POST /api/compatibilidad` no se pueden abrir desde el navegador; se prueban con `curl.exe` (ver los ejemplos de las secciones «Registrar un pedido» y «Consultar compatibilidad»).
 
 Para detener el servidor: `Ctrl + C` en la terminal.
 
@@ -256,6 +259,50 @@ curl.exe -i -X POST http://localhost:3000/api/pedidos -H "Content-Type: applicat
 
 Si una línea falla, se cancela todo y la base queda igual. Estas pruebas cambian el stock: para dejarlo como al inicio, ejecuta `NexusPC.sql` completo.
 
+### Consultar compatibilidad (`POST /api/compatibilidad`)
+
+Devuelve los productos de una categoría con `compatible` (`true` o `false`), `regla` (`"R1"` a `"R4"` o `null`) y `motivo` (texto o `null`). Es solo informativo: nunca bloquea agregar ni comprar. **No cambia stock ni datos**, así que no hace falta reiniciar la base entre pruebas.
+
+Body (los tres campos son obligatorios):
+
+```json
+{
+  "id_producto_base": 11,
+  "categoria_id": 6,
+  "ids_carrito": [24]
+}
+```
+
+| Campo | Regla |
+|---|---|
+| `id_producto_base` | Número entero de 1 a 2147483647; el producto debe existir |
+| `categoria_id` | Número entero de 1 a 2147483647; la categoría a listar debe existir |
+| `ids_carrito` | Lista de enteros de 1 a 2147483647; puede ser `[]`; cada id debe existir. **Máximo 100 ids distintos** (con más, responde `400`) |
+
+Los números van como número JSON (no como texto `"5"`). Los ids repetidos, incluido el del producto base dentro de `ids_carrito`, cuentan una sola vez. Todo el formato se valida antes de consultar la base y los problemas se devuelven juntos en `detalles`.
+
+**Reglas** (según la pareja de categorías del producto base y la categoría listada, en cualquier orden):
+
+| Regla | Pareja | Es compatible si |
+|---|---|---|
+| R1 | Procesadores y Tarjetas madre | `Socket` igual |
+| R2 | Memoria RAM y Tarjetas madre | `TipoRAM` igual |
+| R3 | Fuentes de poder con Procesadores o Tarjetas de video | `PotenciaW` de la fuente ≥ (suma de `ConsumoW` de los procesadores y tarjetas de video considerados) × 1.3. Se compara con enteros: `PotenciaW × 10 ≥ suma × 13` |
+| R4 | Gabinetes y Tarjetas madre | El `FormatoPlaca` de la placa está en `FormatosSoportados` del gabinete |
+| — | Cualquier otra pareja | Siempre `compatible: true`, `regla: null`, `motivo: null` |
+
+R1 a R4 comparan solo el producto base con cada producto listado; el carrito solo interviene en R3 (suma el base, el carrito y, si se listan procesadores o tarjetas de video, el candidato; cada id una vez). Si el producto base está en la categoría listada, también aparece en la lista (sin regla); el frontend lo oculta. El orden es: primero los compatibles y después los incompatibles, cada grupo por `id_producto`.
+
+**Orden de los errores:** `categoria_id` que no existe → `400`; luego `id_producto_base` que no existe → `404`; luego el primer id de `ids_carrito` que no exista → `404`. Si a algún producto le falta una especificación que la regla necesita (o no es numérica), responde `500` y el detalle queda solo en la terminal.
+
+Ejemplo en PowerShell (guarda el JSON en `caso.json`, UTF-8 sin BOM):
+
+```powershell
+curl.exe -i -X POST http://localhost:3000/api/compatibilidad -H "Content-Type: application/json" -d "@caso.json"
+```
+
+Casos rápidos con los datos del script: base 1 y categoría 2 → compatibles 3 y 14; base 11, categoría 6 y carrito `[24]` → compatibles 26 y 27, incompatibles 9 y 25 con `Requiere 741 W; la fuente ofrece ...`.
+
 ### Formato de error
 
 Todos los errores tienen la misma forma:
@@ -266,8 +313,8 @@ Todos los errores tienen la misma forma:
 
 | Código | HTTP | Cuándo |
 |---|---|---|
-| `DATOS_INVALIDOS` | 400 | `categoria_id` o `:id` no es un entero (solo dígitos, hasta 2147483647); o el body de `POST /api/pedidos` es inválido o es un JSON mal formado |
-| `PRODUCTO_NO_ENCONTRADO` | 404 | El id es válido pero ese producto no existe (en un pedido, algún `id_producto` no existe y no se guarda nada) |
+| `DATOS_INVALIDOS` | 400 | `categoria_id` o `:id` no es un entero (solo dígitos, hasta 2147483647); o el body de `POST /api/pedidos` o de `POST /api/compatibilidad` es inválido o es un JSON mal formado (en la compatibilidad también si `categoria_id` no existe o `ids_carrito` trae más de 100 ids distintos) |
+| `PRODUCTO_NO_ENCONTRADO` | 404 | El id es válido pero ese producto no existe (en un pedido, algún `id_producto` no existe y no se guarda nada; en la compatibilidad, el base o algún id de `ids_carrito`) |
 | `STOCK_INSUFICIENTE` | 409 | Una línea del pedido pide más piezas de las que hay; el detalle dice qué producto, cuántas hay y cuántas se pidieron |
 | `ERROR_INTERNO` | 500 | Falla inesperada. Mensaje genérico; el detalle técnico solo aparece en la terminal del servidor |
 
@@ -296,7 +343,7 @@ Tras corregir un problema de conexión **no hace falta reiniciar `npm start`**: 
 
 ## 8. Seguridad (RNF-03)
 
-- Todas las consultas son **parametrizadas** (`request.input(...)`): ningún dato del navegador se pega dentro del texto SQL.
+- Todas las consultas son **parametrizadas** (`request.input(...)`): ningún dato del navegador se pega dentro del texto SQL. En `POST /api/compatibilidad` cada id de `ids_carrito` va en su propio parámetro; el texto de la consulta solo lleva `@id0`, `@id1`..., nunca los valores.
 - Hay **una sola conexión reutilizable** (pool) para todo el servidor.
 - Los precios nunca vienen del navegador: el pedido usa el precio de la base y el stock se descuenta con una sola instrucción atómica dentro de una transacción.
 - Los datos de conexión viven solo en `.env` y `.env` está en `.gitignore`. Antes de cada commit revisa con `git status` que `.env` **no** aparezca.

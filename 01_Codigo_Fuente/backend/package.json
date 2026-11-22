@@ -1,7 +1,7 @@
 {
   "name": "nexus-pc-backend",
-  "version": "0.1.0",
-  "description": "API de Nexus PC (Node.js, Express y SQL Server). Primera versión: categorías y productos.",
+  "version": "0.3.0",
+  "description": "API de Nexus PC (Node.js, Express y SQL Server). Categorías, productos, pedidos y compatibilidad.",
   "main": "servidor.js",
   "private": true,
   "scripts": {

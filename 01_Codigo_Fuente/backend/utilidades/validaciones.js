@@ -5,6 +5,7 @@
 //    (el máximo de INT)". Todo lo demás ("abc", "-1", "1.5", "") es
 //    DATOS_INVALIDOS (400).
 // 2) Validación del body de POST /api/pedidos (sección 5.4).
+// 3) Validación del body de POST /api/compatibilidad (sección 5.6).
 // ---------------------------------------------------------------------
 
 const MAXIMO_INT = 2147483647;
@@ -13,6 +14,11 @@ const MAXIMO_INT = 2147483647;
 const MAXIMO_NOMBRE = 100;
 const MAXIMO_CORREO = 120;
 const MAXIMO_TELEFONO = 20;
+
+// POST /api/compatibilidad: máximo de ids DISTINTOS en ids_carrito.
+// Cada id viaja como un parámetro de la consulta (sección 8.1) y SQL Server
+// solo admite unos 2100 por consulta; con este tope nunca nos acercamos.
+const MAXIMO_IDS_CARRITO = 100;
 
 // Devuelve true si el texto recibido es un entero válido.
 function esEnteroValido(valor) {
@@ -172,4 +178,91 @@ function validarPedido(body) {
   };
 }
 
-module.exports = { MAXIMO_INT, esEnteroValido, validarPedido };
+// ---------------------------------------------------------------------
+// Body de POST /api/compatibilidad (sección 5.6)
+// ---------------------------------------------------------------------
+
+const MENSAJE_ID = `Es obligatorio y debe ser un número entero de 1 a ${MAXIMO_INT}.`;
+
+// Valida TODO el body y junta todos los problemas (igual que validarPedido).
+// Devuelve:
+//   { errores: [ { campo, mensaje }, ... ], datos: null }   si algo falla
+//   { errores: [], datos: { idProductoBase, categoriaId, idsCarrito } }
+// donde "idsCarrito" no tiene repetidos (se conserva el orden en que llegaron;
+// puede incluir el id del base, que la ruta cuenta una sola vez).
+// Aquí solo se revisa el FORMATO; si los ids existen se revisa en la ruta.
+function validarCompatibilidad(body) {
+  const errores = [];
+
+  if (!esObjeto(body)) {
+    return {
+      errores: [{
+        campo: 'body',
+        mensaje: 'El cuerpo debe ser un objeto JSON (con Content-Type: application/json).'
+      }],
+      datos: null
+    };
+  }
+
+  // --- id_producto_base y categoria_id: enteros de 1 a 2147483647 ---
+  // (en el body los números deben ser número JSON, no texto "5")
+  if (!esEnteroPositivoInt(body.id_producto_base)) {
+    errores.push({ campo: 'id_producto_base', mensaje: MENSAJE_ID });
+  }
+  if (!esEnteroPositivoInt(body.categoria_id)) {
+    errores.push({ campo: 'categoria_id', mensaje: MENSAJE_ID });
+  }
+
+  // --- ids_carrito: obligatorio; lista de enteros (puede ser []) ---
+  // "unicos" quita repetidos y conserva el orden de llegada.
+  const unicos = new Set();
+  const carrito = body.ids_carrito;
+
+  if (carrito === undefined || carrito === null) {
+    errores.push({
+      campo: 'ids_carrito',
+      mensaje: 'Es obligatorio y debe ser una lista de números enteros (puede ser vacía).'
+    });
+  } else if (!Array.isArray(carrito)) {
+    errores.push({ campo: 'ids_carrito', mensaje: 'Debe ser una lista de números enteros.' });
+  } else {
+    carrito.forEach((id, i) => {
+      if (esEnteroPositivoInt(id)) {
+        unicos.add(id);
+      } else {
+        errores.push({
+          campo: `ids_carrito[${i}]`,
+          mensaje: `Debe ser un número entero de 1 a ${MAXIMO_INT}.`
+        });
+      }
+    });
+
+    if (unicos.size > MAXIMO_IDS_CARRITO) {
+      errores.push({
+        campo: 'ids_carrito',
+        mensaje: `Puede tener como máximo ${MAXIMO_IDS_CARRITO} productos distintos.`
+      });
+    }
+  }
+
+  if (errores.length > 0) {
+    return { errores, datos: null };
+  }
+
+  return {
+    errores: [],
+    datos: {
+      idProductoBase: body.id_producto_base,
+      categoriaId: body.categoria_id,
+      idsCarrito: [...unicos]
+    }
+  };
+}
+
+module.exports = {
+  MAXIMO_INT,
+  MAXIMO_IDS_CARRITO,
+  esEnteroValido,
+  validarPedido,
+  validarCompatibilidad
+};
