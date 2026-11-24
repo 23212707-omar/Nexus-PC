@@ -127,7 +127,7 @@ Los errores 404, 500 y de conexión no se simulan: se prueban con la API real (p
 frontend/
 ├── index.html            Estructura de la página: encabezado, catálogo, detalle, carrito, confirmación de compra y compatibilidad
 ├── css/
-│   └── estilos.css       Estilos (azul marino y gris; naranja punteado para lo deseable; responsivo desde 360 px)
+│   └── estilos.css       Estilos (azul marino y gris; naranja punteado para lo deseable; responsivo desde 360 px; al final, el bloque de pulido UI7)
 └── js/
     ├── api.js            Llamadas a la API (o al archivo de ejemplo)
     ├── carrito.js        Objeto Carrito: lista en memoria, copia en localStorage
@@ -175,6 +175,21 @@ apagada o sin red) el error **no** trae `estado`: así la pantalla distingue "si
 | `actualizarStock(id, stock)` | Guarda el stock real de la línea (por ejemplo el que informó un 409). Si la cantidad era mayor, la baja al stock; si el stock es 0, quita la línea. Devuelve `{ ok: true, cantidad, quitada }` o `{ ok: false }` si el producto no está o el stock no es válido |
 | `vaciar()` | Deja el carrito vacío |
 | `obtener()`, `totalArticulos()`, `totalPrecio()` | Consultas: copia de la lista, unidades y total |
+
+## Animaciones y `prefers-reduced-motion` (UI7)
+
+Pulido visual pequeño, casi todo en CSS. Está al final de `css/estilos.css`, en el bloque "Pulido visual (UI7)"; no cambia ninguna regla anterior y, si hiciera falta quitarlo, basta borrar ese bloque (la página sigue funcionando igual, solo sin efectos).
+
+| Efecto | Cómo se hace |
+|---|---|
+| Transición en botones (`.boton-agregar`, `.boton-principal`, `.boton-secundario`, `.boton-volver`, `.menu button`, `.compat-chip`, `.selector-boton`) y tarjetas (`.tarjeta`) | `transition` de 160 ms en color, borde y sombra. Al presionar, una sombra interior leve (no cambia el tamaño del botón). El `hover` solo se aplica con ratón (`@media (hover: hover)`) |
+| Aparición suave (fundido de 200 ms, solo opacidad) | `@keyframes ui7-aparece`. Se aplica a `.tarjeta` (al cambiar de categoría), a las pantallas (`.detalle`, `.carrito`, `.pantalla-compra`, `.compat`), al detalle ya cargado, al pedido registrado y a la lista de compatibilidad (`.compat-aparece .compat-caja`). No usa JavaScript para mover el foco ni el desplazamiento, y no usa `transform` (un desplazamiento alarga la página un instante y en escritorio hace aparecer y desaparecer la barra de desplazamiento: la pantalla "tiembla"). Al agregar una fuente de poder (R3) la lista se vuelve a pedir pero no repite el fundido |
+| "Agregado ✓" al agregar al carrito (catálogo, detalle y compatibilidad) | `mostrarBotonAgregado(boton, alRestaurar)` en `app.js`: pone el texto "Agregado ✓" 1,2 s (`TIEMPO_AGREGADO`) y llama a `alRestaurar` para devolver el texto. **No cambia el `aria-label`** y la marca ✓ va en un `span` con `aria-hidden`. Los avisos de siempre ("Solo hay N piezas disponibles", "Agregado al carrito.", "Agregaste N piezas al carrito.") y los `aria-live` no cambian. En el detalle, `refrescar()` no pisa el texto mientras dura el "Agregado ✓" |
+| Pulso del contador del carrito | `pulsarContador()` en `app.js` agrega la clase `contador--pulso` (animación `ui7-pulso`, 300 ms). Solo se llama cuando se agrega una pieza con éxito, no al quitar ni al cambiar cantidades |
+| Sin saltos ni parpadeo de la barra | `html { overflow-y: scroll; }` deja siempre presente la barra de desplazamiento vertical en escritorio, para que no aparezca y desaparezca al pasar de "Cargando..." al contenido (por ejemplo al cambiar de categoría) |
+| Reducir movimiento | `@media (prefers-reduced-motion: reduce)` pone `animation: none` y `transition: none` en todo. El texto "Agregado ✓" sigue apareciendo (no es movimiento) |
+
+Para probar "reducir movimiento" en Windows: Configuración → Accesibilidad → Efectos visuales → Efectos de animación (desactivado). En las herramientas del navegador (F12) también se puede simular con "Rendering → Emulate CSS media feature prefers-reduced-motion".
 
 ## Reglas del código
 

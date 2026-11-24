@@ -400,3 +400,69 @@ h1 { margin: 0; font-size: 24px; color: var(--azul); }
   .compat-importe { grid-area: importe; flex-direction: row; align-items: center; justify-content: space-between; }
   .compat-accion { grid-area: accion; }
 }
+
+/* ======================================================================
+   Pulido visual (UI7): transiciones, aparición suave y feedback al agregar.
+   Todo está en este bloque, al final del archivo: no cambia ninguna regla anterior.
+   Para quitar el pulido basta borrar este bloque completo.
+   ====================================================================== */
+
+/* 0. La barra de desplazamiento vertical siempre está presente (en escritorio). Así no aparece ni desaparece
+   cuando una pantalla o una categoría pasa de "Cargando..." (corta) a su contenido (largo): ni salto lateral ni parpadeo. */
+html { overflow-y: scroll; }
+
+/* 1. Controles y tarjetas: cambio suave de color y borde (160 ms) */
+.boton-agregar, .boton-principal, .boton-secundario, .boton-volver,
+.menu button, .compat-chip, .selector-boton, .tarjeta {
+  transition: background-color 160ms ease, border-color 160ms ease, color 160ms ease, box-shadow 160ms ease;
+}
+
+/* Hover para los controles que no lo tenían (solo con ratón; en pantalla táctil no se queda "pegado") */
+@media (hover: hover) {
+  .menu button:hover:not([aria-current="true"]),
+  .compat-chip:hover:not([aria-current="true"]) { background: var(--fondo); border-color: var(--azul-claro); }
+  .selector-boton:hover:not([aria-disabled="true"]) { background: var(--fondo); }
+  .tarjeta:hover { box-shadow: 0 4px 0 rgba(31, 41, 51, 0.10); }
+}
+
+/* Al presionar: sombra interior leve (no cambia el tamaño, así el clic nunca se pierde en el borde) */
+.boton-agregar:active:not(:disabled):not([aria-disabled="true"]),
+.boton-principal:active:not([aria-disabled="true"]),
+.boton-secundario:active,
+.boton-volver:active,
+.menu button:active,
+.compat-chip:active,
+.selector-boton:active:not([aria-disabled="true"]) { box-shadow: inset 0 2px 0 rgba(31, 41, 51, 0.28); }
+
+/* 2. Aparición suave (fundido de 200 ms). Se repite cada vez que el elemento se crea o deja de estar oculto.
+   Solo cambia la opacidad: con un desplazamiento (transform) la página se alarga un instante y, en
+   escritorio, la barra de desplazamiento aparece y desaparece (la pantalla "tiembla"). */
+@keyframes ui7-aparece {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.tarjeta,                                /* cambia la categoría del catálogo */
+.detalle, .carrito, .pantalla-compra, .compat,   /* se abre una pantalla */
+.detalle-producto, .compra-exito,        /* el detalle ya cargado y el pedido registrado */
+.compat-aparece .compat-caja {           /* aparece la lista de compatibilidad */
+  animation: ui7-aparece 200ms ease-out;
+}
+
+/* 3. Al agregar al carrito: el botón dice "Agregado ✓" (lo pone app.js) y el contador hace un pulso */
+.boton-agregar.boton-agregar--ok,
+.boton-agregar.boton-agregar--ok:hover:not(:disabled):not([aria-disabled="true"]),
+.boton-agregar.boton-agregar--ok[aria-disabled="true"] {
+  background: var(--azul-claro); color: var(--blanco); border: 2px solid var(--azul-claro);
+  font-weight: 600; cursor: default;
+}
+@keyframes ui7-pulso {
+  0%   { transform: scale(1); }
+  40%  { transform: scale(1.3); }
+  100% { transform: scale(1); }
+}
+.contador--pulso { animation: ui7-pulso 300ms ease-out; }
+
+/* 4. Si la persona pidió "reducir movimiento" en su sistema: sin animaciones ni transiciones */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation: none !important; transition: none !important; }
+}

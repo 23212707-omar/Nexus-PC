@@ -30,6 +30,33 @@ const formatoPesos = new Intl.NumberFormat('es-MX', {
   style: 'currency', currency: 'MXN', minimumFractionDigits: 0, maximumFractionDigits: 0
 });
 
+/* ---------- Feedback al agregar (UI7): "Agregado ✓" en el botón y pulso del contador ---------- */
+const TIEMPO_AGREGADO = 1200;   // milisegundos que el botón dice "Agregado ✓"
+
+// El botón dice "Agregado ✓" un momento y después se llama a alRestaurar, que le devuelve su texto.
+// No toca el aria-label: el nombre accesible del botón sigue siendo el mismo. La marca ✓ es solo visual.
+function mostrarBotonAgregado(boton, alRestaurar) {
+  clearTimeout(boton.temporizadorAgregado);
+  boton.classList.add('boton-agregar--ok');
+  boton.textContent = 'Agregado ';
+  const marca = document.createElement('span');
+  marca.setAttribute('aria-hidden', 'true');
+  marca.textContent = '✓';
+  boton.appendChild(marca);
+  boton.temporizadorAgregado = setTimeout(() => {
+    boton.classList.remove('boton-agregar--ok');
+    alRestaurar();
+  }, TIEMPO_AGREGADO);
+}
+
+// Pequeño "pulso" del contador del carrito (la animación está en el CSS)
+function pulsarContador() {
+  contador.classList.remove('contador--pulso');
+  void contador.offsetWidth;   // reinicia la animación si se agrega otra pieza enseguida
+  contador.classList.add('contador--pulso');
+}
+contador.addEventListener('animationend', () => contador.classList.remove('contador--pulso'));
+
 /* ---------- Mensajes: "Cargando..." y error con botón para reintentar ---------- */
 function mostrarCargando() {
   mensaje.className = 'mensaje';
@@ -160,7 +187,7 @@ function crearTarjeta(producto) {
   } else {
     boton.textContent = 'Agregar al carrito';
     boton.setAttribute('aria-label', 'Agregar al carrito: ' + producto.nombre);
-    boton.addEventListener('click', () => agregarAlCarrito(producto, aviso));
+    boton.addEventListener('click', () => agregarAlCarrito(producto, aviso, boton));
   }
 
   tarjeta.append(caja, marca, nombre, fila, boton, aviso);
@@ -168,10 +195,12 @@ function crearTarjeta(producto) {
 }
 
 /* ---------- Agregar al carrito ---------- */
-function agregarAlCarrito(producto, aviso) {
+function agregarAlCarrito(producto, aviso, boton) {
   const resultado = Carrito.agregar(producto);
   if (resultado.ok) {
     actualizarVistaCarrito();
+    pulsarContador();
+    mostrarBotonAgregado(boton, () => { boton.textContent = 'Agregar al carrito'; });
   } else {
     // No se agrega: se avisa cuántas piezas hay y el mensaje se quita solo a los 3 segundos
     aviso.textContent = resultado.stock === 1 ? 'Solo hay 1 pieza disponible'
