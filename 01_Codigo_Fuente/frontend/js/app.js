@@ -1,7 +1,7 @@
 /* app.js – Lo que se ve en pantalla: menú, tarjetas, contador, mensajes y cambio entre pantallas. */
 
-// El carrito vive en js/carrito.js (objeto Carrito), el detalle de producto en js/detalle.js
-// y la pantalla del carrito completo en js/carrito-vista.js
+// El carrito vive en js/carrito.js (objeto Carrito), el detalle de producto en js/detalle.js,
+// la pantalla del carrito completo en js/carrito-vista.js y la de compatibilidad en js/compatibilidad.js
 let categoriaActiva = null;   // La categoría que se está mostrando
 let categorias = [];          // Todas las categorías (se llenan al cargar el menú)
 let promesaCategorias = null; // La petición de categorías (para no pedirlas dos veces)
@@ -13,6 +13,7 @@ const vistaCatalogo = document.getElementById('vista-catalogo');
 const vistaDetalle = document.getElementById('vista-detalle');
 const vistaCarrito = document.getElementById('vista-carrito');
 const vistaCompra = document.getElementById('vista-compra');
+const vistaCompat = document.getElementById('vista-compat');
 const compraTitulo = document.getElementById('compra-titulo');
 const menu = document.getElementById('menu-categorias');
 const botonMenu = document.getElementById('btn-menu');
@@ -303,7 +304,7 @@ async function seleccionarCategoria(categoria) {
   }
 }
 
-/* ---------- Pantallas: catálogo (#/), detalle (#/producto/ID), carrito (#/carrito) y compra (#/compra) ---------- */
+/* ---------- Pantallas: catálogo (#/), detalle (#/producto/ID), carrito (#/carrito), compra (#/compra) y compatibilidad (#/compatibilidad/ID) ---------- */
 // Pide las categorías una sola vez y dibuja el menú. Devuelve true si salió bien.
 function cargarCategorias() {
   if (!promesaCategorias) {
@@ -319,6 +320,8 @@ function leerRuta() {
   const hash = location.hash;
   const coincide = /^#\/producto\/([^/]*)$/.exec(hash);
   if (coincide) return { vista: 'detalle', id: coincide[1] };
+  const coincideCompat = /^#\/compatibilidad\/([^/]*)$/.exec(hash);
+  if (coincideCompat) return { vista: 'compatibilidad', id: coincideCompat[1] };
   if (hash === '#/carrito') return { vista: 'carrito' };
   if (hash === '#/compra') return { vista: 'compra' };
   return { vista: 'catalogo' };
@@ -358,6 +361,7 @@ function mostrarSoloVista(nombre) {
   vistaDetalle.hidden = nombre !== 'detalle';
   vistaCarrito.hidden = nombre !== 'carrito';
   vistaCompra.hidden = nombre !== 'compra';
+  vistaCompat.hidden = nombre !== 'compatibilidad';
 }
 
 // Cambia de pantalla según la dirección
@@ -367,10 +371,13 @@ function mostrarRuta() {
   // Al salir del catálogo se recuerda hasta dónde estaba desplazado
   if (ruta.vista !== 'catalogo' && !vistaCatalogo.hidden) posicionCatalogo = window.scrollY;
   if (ruta.vista !== 'detalle') cancelarDetalle();
+  if (ruta.vista !== 'compatibilidad') cancelarCompatibilidad();
   mostrarSoloVista(ruta.vista);
 
   if (ruta.vista === 'detalle') {
     mostrarDetalle(ruta.id);
+  } else if (ruta.vista === 'compatibilidad') {
+    mostrarCompatibilidad(ruta.id);
   } else if (ruta.vista === 'carrito') {
     mostrarCarrito();
   } else if (ruta.vista === 'compra') {
@@ -382,6 +389,7 @@ function mostrarRuta() {
 }
 
 // La pantalla 5 (confirmación de compra) está en js/compra.js: mostrarCompra()
+// La pantalla 6 (compatibilidad) está en js/compatibilidad.js: mostrarCompatibilidad()
 
 // El botón "atrás" del navegador y los enlaces cambian la dirección; aquí se reacciona
 window.addEventListener('hashchange', mostrarRuta);

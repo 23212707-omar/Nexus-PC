@@ -150,11 +150,48 @@
     </section>
   </main>
 
+  <!-- Pantalla 6: compatibilidad (dirección #/compatibilidad/ID). Función deseable. Lo llena compatibilidad.js -->
+  <main id="vista-compat" class="compat" hidden>
+    <nav class="ruta" aria-label="Ruta de navegación">
+      <a href="#/carrito">Carrito</a><span aria-hidden="true">›</span><span aria-current="page">Compatibilidad</span>
+    </nav>
+    <h1 id="compat-titulo" class="carrito-titulo" tabindex="-1">Compatibilidad</h1>
+    <!-- Mensajes de la pantalla: "Cargando...", producto inexistente o error -->
+    <div id="compat-mensaje" class="mensaje" role="status" aria-live="polite" hidden></div>
+
+    <div id="compat-contenido" hidden>
+      <p class="compat-deseable">Función deseable · Basada en 4 reglas mínimas: procesador–tarjeta madre, RAM–tarjeta madre, fuente–consumo y gabinete–tarjeta madre.</p>
+      <!-- Componente elegido: lo llena compatibilidad.js -->
+      <section id="compat-base" class="compat-base" aria-label="Componente elegido"></section>
+      <!-- Una categoría a la vez: la activa se resalta -->
+      <div id="compat-chips" class="compat-chips" role="group" aria-label="Categorías a listar"></div>
+      <!-- La leyenda es solo visual: cada fila dice "Compatible" o "No compatible" con texto para lector de pantalla -->
+      <p id="compat-leyenda" class="compat-leyenda" aria-hidden="true">✔ Compatible &nbsp; ✘ No compatible (al final de la lista)</p>
+      <p id="compat-resumen" class="subtitulo compat-resumen" role="status"></p>
+      <!-- Mensajes de la lista: "Cargando...", error, categoría sin productos -->
+      <div id="compat-estado" class="mensaje" role="status" aria-live="polite" hidden></div>
+      <div id="compat-lista"></div>
+    </div>
+  </main>
+
+  <!-- Aviso al agregar un producto incompatible (ventana modal; la llena compatibilidad.js) -->
+  <dialog id="compat-dialogo" class="compat-dialogo" aria-labelledby="compat-dialogo-titulo" aria-describedby="compat-dialogo-texto">
+    <div class="compat-dialogo-caja">
+      <h2 id="compat-dialogo-titulo">Este producto no es compatible</h2>
+      <div id="compat-dialogo-texto"></div>
+      <div class="compat-dialogo-acciones">
+        <button id="compat-dialogo-cancelar" class="boton-secundario" type="button">Cancelar</button>
+        <button id="compat-dialogo-confirmar" class="boton-principal" type="button">Agregar de todas formas</button>
+      </div>
+    </div>
+  </dialog>
+
   <script src="js/api.js"></script>
   <script src="js/carrito.js"></script>
   <script src="js/detalle.js"></script>
   <script src="js/carrito-vista.js"></script>
   <script src="js/compra.js"></script>
+  <script src="js/compatibilidad.js"></script>
   <script src="js/app.js"></script>
 </body>
 </html>
