@@ -34,7 +34,7 @@ function crearFilaCarrito(linea) {
   imagen.className = 'carrito-imagen';
   imagen.appendChild(crearImagen({ nombre: '', imagen_url: linea.imagen_url }));
 
-  // Marca, nombre (enlace al detalle) y aviso de máximo
+  // Marca, nombre (enlace al detalle), aviso de máximo y enlace a la compatibilidad
   const producto = document.createElement('div');
   producto.className = 'carrito-producto';
   if (linea.marca) {
@@ -49,7 +49,13 @@ function crearFilaCarrito(linea) {
   nombre.textContent = linea.nombre;
   const maximo = document.createElement('p');
   maximo.className = 'carrito-maximo';
-  producto.append(nombre, maximo);
+  // Función deseable (RF-08): abre la Pantalla 6 con este producto como componente elegido
+  const compatibles = document.createElement('a');
+  compatibles.className = 'carrito-compatibles';
+  compatibles.href = '#/compatibilidad/' + id;
+  compatibles.textContent = 'Ver compatibles con este';
+  compatibles.setAttribute('aria-label', 'Ver compatibles con este: ' + linea.nombre);
+  producto.append(nombre, maximo, compatibles);
 
   // Precio de una pieza
   const precio = document.createElement('div');

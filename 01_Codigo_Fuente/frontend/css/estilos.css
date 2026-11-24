@@ -309,3 +309,94 @@ h1 { margin: 0; font-size: 24px; color: var(--azul); }
   .boton-quitar { grid-area: quitar; align-self: start; }
   .carrito-confirmacion .boton-principal, .carrito-confirmacion .boton-secundario { flex: 1 1 120px; }
 }
+
+/* ---------- Compatibilidad (Pantalla 6, función deseable) ---------- */
+/* El naranja marca lo deseable (borde punteado). #c2410c da más de 5:1 de contraste con el blanco. */
+:root { --naranja: #c2410c; }
+
+/* Enlace "Ver compatibles con este" en cada fila del carrito (debajo del nombre) */
+.carrito-compatibles { display: inline-flex; align-items: center; min-height: 40px; margin-top: 6px; padding: 0 8px;
+        font-size: 13px; font-weight: 600; color: var(--naranja); text-decoration: none;
+        border: 2px dashed var(--naranja); border-radius: 6px; }
+.carrito-compatibles:hover { background: var(--fondo); }
+
+.compat { max-width: 1100px; margin: 0 auto; padding: 20px 16px 40px; }
+.compat-deseable { margin: 0 0 14px; padding: 8px 12px; font-size: 13px; color: var(--naranja);
+        border: 2px dashed var(--naranja); border-radius: 6px; }
+
+/* Componente elegido */
+.compat-base { display: flex; align-items: center; gap: 16px; padding: 14px 16px; background: var(--blanco);
+        border: 2px solid var(--azul); border-radius: 8px; }
+.compat-base-imagen { flex: none; width: 88px; }
+.compat-base-imagen .imagen { height: 72px; margin: 0; font-size: 12px; }
+.compat-base-datos { flex: 1; min-width: 0; }
+.compat-base-etiqueta { margin: 0; font-size: 13px; color: var(--gris-texto); }
+.compat-base-nombre { margin: 0; font-size: 20px; line-height: 1.25; color: var(--azul); overflow-wrap: anywhere; }
+.compat-base-claves { margin: 2px 0 0; font-size: 14px; color: var(--gris-texto); }
+.compat-volver { display: inline-flex; align-items: center; min-height: 44px; padding: 0 4px; color: var(--azul);
+        font-weight: 600; }
+
+/* Categorías */
+.compat-chips { display: flex; flex-wrap: wrap; gap: 6px; margin: 16px 0 10px; }
+.compat-chip { min-height: 36px; padding: 0 14px; background: var(--blanco); color: var(--texto);
+        border: 1px solid var(--gris-borde); border-radius: 18px; }
+.compat-chip[aria-current="true"] { background: var(--azul); color: var(--blanco); border-color: var(--azul); }
+.compat-leyenda { margin: 0 0 6px; font-size: 14px; color: var(--gris-texto); }
+.compat-resumen { margin: 0 0 8px; }
+.compat-nota { margin: 0 0 10px; padding: 8px 12px; font-size: 14px; }
+
+/* Lista: compatibles, separador punteado y no compatibles */
+.compat-caja { padding: 0 16px; background: var(--blanco); border: 2px solid var(--gris-borde); border-radius: 8px; }
+.compat-grupo { margin: 0; padding: 0; list-style: none; }
+.compat-fila { display: grid; align-items: center; column-gap: 12px; padding: 12px 0;
+        grid-template-columns: 34px 64px minmax(0, 1fr) auto 150px; border-top: 1px solid var(--gris-borde); }
+.compat-fila--sin-marca { grid-template-columns: 64px minmax(0, 1fr) auto 150px; }
+.compat-grupo > .compat-fila:first-child { border-top: 0; }
+.compat-separador { margin: 0; padding: 10px 0 8px; font-size: 14px; font-weight: 600; color: var(--naranja);
+        border-top: 2px dashed var(--naranja); border-bottom: 1px solid var(--gris-borde); }
+.compat-marca { display: flex; align-items: center; justify-content: center; width: 30px; height: 30px;
+        border: 2px solid var(--azul); border-radius: 50%; font-weight: 700; color: var(--azul); }
+.compat-fila--no .compat-marca { border-style: dashed; border-color: var(--naranja); color: var(--naranja); }
+.compat-imagen .imagen { width: 64px; height: 64px; margin: 0; font-size: 11px; }
+.compat-info { min-width: 0; }
+.compat-nombre { font-weight: 700; overflow-wrap: anywhere; }
+.compat-motivo { margin: 2px 0 0; font-size: 13px; color: var(--naranja); }
+.compat-importe { display: flex; flex-direction: column; align-items: flex-end; gap: 4px; }
+.compat-fila .boton-agregar { margin-top: 0; }
+/* En los incompatibles el botón sigue activo, pero con estilo más suave */
+.compat-agregar--suave { background: var(--blanco); color: var(--azul); }
+.compat-agregar--suave:hover:not(:disabled):not([aria-disabled="true"]) { background: var(--fondo); color: var(--azul);
+        border-color: var(--azul); }
+
+/* Ventana de aviso al agregar un incompatible */
+.compat-dialogo { width: min(420px, calc(100% - 32px)); padding: 0; color: var(--texto); background: var(--blanco);
+        border: 2px solid var(--azul); border-radius: 8px; box-shadow: 0 6px 0 rgba(31, 41, 51, 0.12); }
+.compat-dialogo::backdrop { background: rgba(31, 41, 51, 0.55); }
+.compat-dialogo-caja { padding: 18px; }
+.compat-dialogo h2 { margin: 0 0 8px; font-size: 18px; color: var(--azul); }
+.compat-dialogo p { margin: 0 0 8px; }
+.compat-dialogo-producto { font-weight: 700; }
+.compat-dialogo-acciones { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 14px; }
+.compat-dialogo-acciones button { flex: 1 1 140px; cursor: pointer; }
+
+@media (max-width: 700px) {
+  .compat { padding: 14px 12px 32px; }
+  .compat-base { flex-wrap: wrap; gap: 10px 12px; padding: 12px; }
+  .compat-base-imagen { width: 64px; }
+  .compat-base-imagen .imagen { height: 56px; }
+  .compat-volver { width: 100%; padding: 0; border-top: 1px solid var(--gris-borde); }
+  .compat-chip { min-height: 44px; }
+  .carrito-compatibles { min-height: 44px; }
+  .compat-caja { padding: 0 12px; }
+  /* Cada producto se apila: ✔/✘, imagen y nombre arriba; precio y disponibilidad en medio; botón abajo */
+  .compat-fila { grid-template-columns: 34px 56px minmax(0, 1fr); row-gap: 8px;
+        grid-template-areas: "marca imagen info" "importe importe importe" "accion accion accion"; }
+  .compat-fila--sin-marca { grid-template-columns: 56px minmax(0, 1fr);
+        grid-template-areas: "imagen info" "importe importe" "accion accion"; }
+  .compat-marca { grid-area: marca; }
+  .compat-imagen { grid-area: imagen; }
+  .compat-imagen .imagen { width: 56px; height: 56px; }
+  .compat-info { grid-area: info; }
+  .compat-importe { grid-area: importe; flex-direction: row; align-items: center; justify-content: space-between; }
+  .compat-accion { grid-area: accion; }
+}

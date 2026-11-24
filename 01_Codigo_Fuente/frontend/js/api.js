@@ -1,8 +1,8 @@
 /* api.js – Aquí viven las llamadas a los datos. La pantalla (app.js) no sabe de dónde vienen. */
 
 // true  = lee el archivo js/datos-ejemplo.json (solo catálogo; el detalle NO trae descripción ni especificaciones)
-// false = pide los datos a la API real (GET /api/categorias, /api/productos y /api/productos/:id)
-// Al subir el código debe quedar en false: el detalle de producto necesita la API real.
+// false = pide los datos a la API real (GET /api/categorias, /api/productos y /api/productos/:id, POST /api/compatibilidad)
+// Al subir el código debe quedar en false: el detalle de producto y la compatibilidad necesitan la API real.
 const USAR_DATOS_EJEMPLO = false;
 
 const ARCHIVO_EJEMPLO = 'js/datos-ejemplo.json';
@@ -82,6 +82,25 @@ async function obtenerProducto(idProducto) {
     return { ...producto, descripcion: null, especificaciones: {} };
   }
   return pedirJSON('/api/productos/' + encodeURIComponent(idProducto));
+}
+
+/* ---------- Compatibilidad (función deseable, RF-08) ---------- */
+
+// Lista los productos de una categoría indicando si son compatibles con el producto base y con el carrito.
+// "idsCarrito" son los ids de los productos del carrito (puede ser [] si está vacío).
+// Devuelve { id_producto_base, categoria_id, productos: [{ ...campos del producto, compatible, regla, motivo }, ...] }.
+// La API ya ordena: primero los compatibles y al final los incompatibles. "regla" es null si no hay regla entre las dos categorías.
+// Esta ruta no tiene versión de ejemplo: necesita la API real. Errores: 400 (datos), 404 (producto inexistente; detalles trae su id) y 500.
+async function obtenerCompatibilidad(idProductoBase, idCategoria, idsCarrito) {
+  return pedirJSON('/api/compatibilidad', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      id_producto_base: idProductoBase,
+      categoria_id: idCategoria,
+      ids_carrito: idsCarrito
+    })
+  });
 }
 
 /* ---------- Pedidos ---------- */
