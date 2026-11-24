@@ -25,7 +25,7 @@ let compatPeticion = 0;          // Número de la última carga de la pantalla (
 let compatListaPeticion = 0;     // Número de la última petición de la lista (para ignorar respuestas viejas)
 let compatBase = null;           // El producto elegido (el que viene de GET /api/productos/:id)
 let compatCategoria = null;      // La categoría que se está listando
-let compatPendiente = null;      // { producto, aviso } del incompatible que espera la decisión de la persona
+let compatPendiente = null;      // { producto, aviso, boton } del incompatible que espera la decisión de la persona
 let compatMensajeFila = null;    // { id, texto } aviso que se muestra en una fila después de redibujar la lista
 
 // Categoría con la que se abre la pantalla: la primera que tiene regla con el producto elegido
@@ -178,6 +178,11 @@ function compatMostrarAviso(aviso, texto) {
   aviso.temporizador = setTimeout(() => { aviso.hidden = true; }, 3000);
 }
 
+// "Agregado ✓" en el botón de la fila (UI7); después vuelve a decir "Agregar". El aria-label no cambia.
+function compatMostrarBotonAgregado(boton) {
+  mostrarBotonAgregado(boton, () => { boton.textContent = 'Agregar'; });
+}
+
 // "marcar" es false cuando no hay regla entre las dos categorías: entonces no se pinta ✔ ni ✘
 function compatCrearFila(producto, marcar) {
   const incompatible = marcar && !producto.compatible;
@@ -251,7 +256,7 @@ function compatCrearFila(producto, marcar) {
   } else {
     boton.textContent = 'Agregar';
     boton.setAttribute('aria-label', 'Agregar al carrito: ' + producto.nombre + (incompatible ? ' (no compatible)' : ''));
-    boton.addEventListener('click', () => compatAlPulsarAgregar(producto, incompatible, aviso));
+    boton.addEventListener('click', () => compatAlPulsarAgregar(producto, incompatible, aviso, boton));
   }
   accion.append(boton, aviso);
 
@@ -260,29 +265,32 @@ function compatCrearFila(producto, marcar) {
   // Si se acaba de agregar este producto y la lista se redibujó, se vuelve a mostrar la confirmación
   if (compatMensajeFila && compatMensajeFila.id === producto.id_producto) {
     compatMostrarAviso(aviso, compatMensajeFila.texto);
+    if (!agotado) compatMostrarBotonAgregado(boton);   // el botón nuevo también dice "Agregado ✓"
     compatMensajeFila = null;
   }
   return fila;
 }
 
 /* ---------- Agregar al carrito ---------- */
-function compatAlPulsarAgregar(producto, incompatible, aviso) {
+function compatAlPulsarAgregar(producto, incompatible, aviso, boton) {
   // Primero el stock: si ya no hay piezas, no tiene sentido preguntar por la compatibilidad
   if (producto.stock - piezasEnCarrito(producto.id_producto) < 1) {
     compatMostrarAviso(aviso, compatTextoSoloHay(producto.stock));
     return;
   }
-  if (incompatible) compatAbrirDialogo(producto, aviso);
-  else compatAgregarAlCarrito(producto, aviso);
+  if (incompatible) compatAbrirDialogo(producto, aviso, boton);
+  else compatAgregarAlCarrito(producto, aviso, boton);
 }
 
-function compatAgregarAlCarrito(producto, aviso) {
+function compatAgregarAlCarrito(producto, aviso, boton) {
   const resultado = Carrito.agregar(producto);
   if (!resultado.ok) {
     compatMostrarAviso(aviso, compatTextoSoloHay(resultado.stock));
     return;
   }
   actualizarVistaCarrito();   // contador y vista rápida del encabezado
+  pulsarContador();
+  compatMostrarBotonAgregado(boton);
   const texto = 'Agregado al carrito.';
   // En fuentes (R3) el resultado depende del carrito: se vuelve a pedir la lista con el carrito nuevo
   if (producto.regla === 'R3') {
@@ -294,8 +302,8 @@ function compatAgregarAlCarrito(producto, aviso) {
 }
 
 /* ---------- Aviso al agregar un incompatible (ventana modal) ---------- */
-function compatAbrirDialogo(producto, aviso) {
-  compatPendiente = { producto: producto, aviso: aviso };
+function compatAbrirDialogo(producto, aviso, boton) {
+  compatPendiente = { producto: producto, aviso: aviso, boton: boton };
   compatDialogoTexto.textContent = '';
   const nombre = document.createElement('p');
   nombre.className = 'compat-dialogo-producto';
@@ -317,7 +325,7 @@ compatDialogo.addEventListener('close', () => {
   const pendiente = compatPendiente;
   compatPendiente = null;
   if (pendiente && compatDialogo.returnValue === 'confirmar') {
-    compatAgregarAlCarrito(pendiente.producto, pendiente.aviso);
+    compatAgregarAlCarrito(pendiente.producto, pendiente.aviso, pendiente.boton);
   }
 });
 
@@ -410,6 +418,7 @@ async function compatCargarLista(categoria) {
   compatCategoria = categoria;
   compatResaltarChip(categoria.id_categoria);
   compatLista.textContent = '';
+  compatLista.classList.add('compat-aparece');   // UI7: la lista nueva aparece con fundido (el CSS lo anima)
   compatResumen.textContent = '';
   compatLeyenda.hidden = false;
   compatEscribirMensaje(compatEstado, 'Cargando...', false);
@@ -434,6 +443,7 @@ async function compatRefrescarLista() {
     const activo = document.activeElement;
     const filaActiva = activo && activo.closest ? activo.closest('.compat-fila') : null;
     const idEnfocado = filaActiva ? filaActiva.dataset.id : null;
+    compatLista.classList.remove('compat-aparece');   // UI7: al refrescar la lista no se repite el fundido
     compatDibujarLista(respuesta.productos, categoria);
     if (idEnfocado) {
       const nuevo = compatLista.querySelector('.compat-fila[data-id="' + idEnfocado + '"] .boton-agregar');

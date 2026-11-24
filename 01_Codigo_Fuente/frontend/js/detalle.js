@@ -239,7 +239,10 @@ function crearCompra(producto) {
     cantidad = Math.max(1, Math.min(cantidad, libres));
     const hayPiezas = libres >= 1;
     selector.hidden = !hayPiezas;
-    boton.textContent = hayPiezas ? 'Agregar al carrito' : 'Ya tienes todas las piezas en tu carrito';
+    // Mientras el botón dice "Agregado ✓" no se le cambia el texto; al terminar, refrescar lo deja al día
+    if (!boton.classList.contains('boton-agregar--ok')) {
+      boton.textContent = hayPiezas ? 'Agregar al carrito' : 'Ya tienes todas las piezas en tu carrito';
+    }
     if (hayPiezas) boton.setAttribute('aria-label', 'Agregar al carrito: ' + producto.nombre);
     else boton.removeAttribute('aria-label');
     ponerInactivo(boton, !hayPiezas);
@@ -282,6 +285,11 @@ function crearCompra(producto) {
     actualizarVistaCarrito();
     cantidad = 1;
     refrescar();
+    // Feedback visual (UI7): "Agregado ✓" en el botón y pulso del contador; después refrescar() deja el botón al día
+    if (agregadas > 0) {
+      pulsarContador();
+      mostrarBotonAgregado(boton, refrescar);
+    }
 
     const textoAgregado = agregadas > 0 ? 'Agregaste ' + textoPiezas(agregadas) + ' al carrito.' : '';
     const textoStock = resultado.ok ? '' : (resultado.stock === 1 ? 'Solo hay 1 pieza disponible.'
