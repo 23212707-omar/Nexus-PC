@@ -145,6 +145,7 @@ No aplica: el sistema no incluye inicio de sesión de usuarios. La contraseña d
 - Especificación de la API: `04_Documentacion/Artefactos/API_Especificacion.md`
 - Registro de cambios: `04_Documentacion/Registro_de_Cambios.md`
 - Plan del Proyecto y cronograma: `04_Documentacion/`
+- Documento de la Etapa IV y V (supervisión, pruebas y entrega final): `04_Documentacion/Nexus_PC_Etapa_IV_y_V.pdf`
 
 ## Flujo de trabajo del equipo
 
